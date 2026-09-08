@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Carbon Gray 10 theme: square tiles, Plex type, Blue 60 primary. -->
-    <style name="Theme.AxieRemote" parent="Theme.Material3.Light.NoActionBar">
+    <!-- Carbon Gray 100 theme (dark). -->
+    <style name="Theme.AxieRemote" parent="Theme.Material3.Dark.NoActionBar">
         <item name="android:fontFamily">@font/ibm_plex_sans</item>
         <item name="fontFamily">@font/ibm_plex_sans</item>
         <item name="android:windowBackground">@color/carbon_bg</item>

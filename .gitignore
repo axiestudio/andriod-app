@@ -6,9 +6,10 @@ app/build/
 captures/
 *.hprof
 
-# Signing
+# Signing — NEVER commit: key material must not reach the public repo
 *.jks
 *.keystore
+keystore.properties
 
 # IDE
 .idea/

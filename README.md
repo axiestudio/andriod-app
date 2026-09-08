@@ -7,6 +7,15 @@ Native Android companion app (`com.axie.remote`): streams the phone screen via
 > Product brief: [`goal.md`](./goal.md) · Implementation spec: [`SPEC.md`](./SPEC.md) ·
 > Agent/human manual: [`SKILL.md`](./SKILL.md)
 
+## Download (no build needed)
+
+Signed release APK, installable on any Android 10+ phone:
+
+[`releases/AxieRemote-v0.1.0-release.apk`](./releases/AxieRemote-v0.1.0-release.apk)
+
+On your phone: open that link → download → tap the file → *Install anyway*
+(Play Protect warns on all side-loaded apps). Then follow *Use* below.
+
 ## Requirements (Linux build host)
 
 - JDK 17+, Android SDK with `platform-tools`, `platforms;android-34`, `build-tools;34.0.0`

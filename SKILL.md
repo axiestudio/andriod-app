@@ -36,6 +36,13 @@ adb shell dumpsys activity services | grep -i axie  # is the FGS alive?
 APK output: `app/build/outputs/apk/debug/app-debug.apk`. Install: `adb install -r` it,
 or copy to the phone and side-load. Debug APK is already signed (debug key) — installable as-is.
 
+Release (distributable) APK: `./gradlew assembleRelease` →
+`app/build/outputs/apk/release/app-release.apk`. It signs with the keystore in
+`~/.keystores/axie-remote-release.jks` via `keystore.properties` (both local-only,
+git-ignored, never committed). Back up the keystore + password: losing them means the
+app can never be updated in place (Android pins updates to the signing cert).
+Use one shared store/key password (PKCS12 can't do distinct key passwords reliably).
+
 On-device checklist (every manual test):
 
 1. Install, open **Axie Remote**, tap **Start sharing** → accept system screen-cast dialog.

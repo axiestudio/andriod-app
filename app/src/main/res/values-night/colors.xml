@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Carbon Gray 100 (dark) -->
+    <color name="carbon_bg">#161616</color>
+    <color name="carbon_layer">#262626</color>
+    <color name="carbon_border">#393939</color>
+    <color name="carbon_text_primary">#F4F4F4</color>
+    <color name="carbon_text_secondary">#C6C6C6</color>
+    <color name="carbon_text_placeholder">#6F6F6F</color>
+    <color name="carbon_blue_60">#4589FF</color>
+    <color name="carbon_blue_70">#2969DB</color>
+    <color name="carbon_blue_10">#002D9C</color>
+    <color name="carbon_green">#42BE65</color>
+    <color name="carbon_red">#FA4D56</color>
+    <color name="carbon_gray_idle">#8D8D8D</color>
+</resources>

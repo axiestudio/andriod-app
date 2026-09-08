@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#303F9F</color>
+    <!-- Launcher -->
+    <color name="ic_launcher_background">#0F62FE</color>
+
+    <!-- Carbon Gray 10 (light) -->
+    <color name="carbon_bg">#F4F4F4</color>
+    <color name="carbon_layer">#FFFFFF</color>
+    <color name="carbon_border">#E0E0E0</color>
+    <color name="carbon_text_primary">#161616</color>
+    <color name="carbon_text_secondary">#525252</color>
+    <color name="carbon_text_placeholder">#A8A8A8</color>
+    <color name="carbon_blue_60">#0F62FE</color>
+    <color name="carbon_blue_70">#0353E9</color>
+    <color name="carbon_blue_10">#EDF5FF</color>
+    <color name="carbon_green">#24A148</color>
+    <color name="carbon_red">#DA1E28</color>
+    <color name="carbon_gray_idle">#8D8D8D</color>
 </resources>

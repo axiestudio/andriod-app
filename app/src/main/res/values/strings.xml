@@ -1,7 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Axie Remote</string>
-    <string name="status_idle">Idle — tap Start sharing, then accept the system dialog.</string>
+    <string name="app_tagline">Screen stream + remote control</string>
+
+    <string name="section_connection">Connection</string>
+    <string name="server_url_label">Relay server URL</string>
+    <string name="server_url_hint">wss://relay.example.com/device</string>
+    <string name="server_url_helper">Saved on this device. Used when remote viewing connects.</string>
+    <string name="device_token_label">Device token</string>
+    <string name="device_token_hint">Pairing token from the CRM</string>
+
+    <string name="section_sharing">Screen sharing</string>
+    <string name="status_idle">Idle — start sharing, then accept the system dialog.</string>
+    <string name="status_starting">Starting capture…</string>
+    <string name="status_sharing">Sharing screen — live.</string>
+    <string name="status_denied">Permission denied — tap Start sharing to retry.</string>
+    <string name="start_sharing">Start sharing</string>
+    <string name="stop_sharing">Stop sharing</string>
+
+    <string name="section_control">Remote control</string>
+    <string name="control_description">Allow remote taps, swipes and system buttons via the accessibility service.</string>
+    <string name="control_enable">Open accessibility settings</string>
+    <string name="control_on">Control service is on.</string>
+    <string name="control_off">Control service is off — enable it to allow remote input.</string>
+    <string name="test_tap">Test tap</string>
+    <string name="tap_ok">Test tap dispatched.</string>
+    <string name="tap_missing">Control service is off — enable it first.</string>
+    <string name="nav_back">Back</string>
+    <string name="nav_home">Home</string>
+
+    <string name="footer_version">v0.1.0 · com.axie.remote · side-loaded build</string>
+
     <string name="accessibility_description">Lets Axie Remote tap, swipe and press system buttons on your behalf during a remote-control session.</string>
     <string name="notif_channel_name">Screen sharing</string>
     <string name="notif_title">Axie Remote is sharing your screen</string>
