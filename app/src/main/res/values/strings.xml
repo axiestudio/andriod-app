@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Axie Remote</string>
+    <string name="status_idle">Idle — tap Start sharing, then accept the system dialog.</string>
+    <string name="accessibility_description">Lets Axie Remote tap, swipe and press system buttons on your behalf during a remote-control session.</string>
+    <string name="notif_channel_name">Screen sharing</string>
+    <string name="notif_title">Axie Remote is sharing your screen</string>
+</resources>

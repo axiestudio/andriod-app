@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- phone screen -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,26h40a4,4 0,0 1,4 4v44a4,4 0,0 1,-4 4H34a4,4 0,0 1,-4 -4V30a4,4 0,0 1,4 -4z" />
+    <path
+        android:fillColor="#303F9F"
+        android:pathData="M35,31h38v38H35z" />
+    <!-- cast waves -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M44,57a9,9 0,0 1,9 -9" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M44,64a16,16 0,0 1,16 -16" />
+    <!-- cast dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M41,57a3,3 0,1 0,6 0a3,3 0,1 0,-6 0z" />
+</vector>

@@ -1,0 +1,15 @@
+# Android / Gradle — local-only, never commit
+local.properties
+.gradle/
+build/
+app/build/
+captures/
+*.hprof
+
+# Signing
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
