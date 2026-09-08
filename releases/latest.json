@@ -1,6 +1,6 @@
 {
-  "versionCode": 3,
-  "versionName": "0.1.2",
-  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.2-release.apk",
-  "notes": "Self-update, tooltip UI, restricted-settings guidance."
+  "versionCode": 4,
+  "versionName": "0.1.3",
+  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.3-release.apk",
+  "notes": "Setup wizard, permission rationale flows, floating-label fix."
 }

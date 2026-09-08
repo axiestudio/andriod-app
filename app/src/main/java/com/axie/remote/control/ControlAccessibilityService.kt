@@ -1,12 +1,15 @@
 package com.axie.remote.control
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
+import android.content.Context
 import android.graphics.Path
 import android.os.Build
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityManager
 import android.view.accessibility.AccessibilityNodeInfo
 
 /**
@@ -25,6 +28,23 @@ class ControlAccessibilityService : AccessibilityService() {
         @Volatile private var instance: ControlAccessibilityService? = null
 
         fun isEnabled(): Boolean = instance != null
+
+        /**
+         * System truth: is our service enabled in Settings? Unlike [isEnabled],
+         * this survives process death — the system binds the service in its own
+         * lifecycle, so a null [instance] never means "disabled".
+         */
+        fun isEnabled(context: Context): Boolean {
+            val am = context.getSystemService(AccessibilityManager::class.java)
+                ?: return false
+            return am.getEnabledAccessibilityServiceList(
+                AccessibilityServiceInfo.FEEDBACK_ALL_MASK
+            ).any {
+                val si = it.resolveInfo.serviceInfo
+                si.packageName == context.packageName &&
+                    si.name == ControlAccessibilityService::class.java.name
+            }
+        }
 
         /** Tap the center of the screen (M0 self-test). */
         fun tapCenter(): Boolean {

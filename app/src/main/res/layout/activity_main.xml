@@ -83,7 +83,6 @@
                         android:id="@+id/serverUrlInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/server_url_hint"
                         android:inputType="textUri"
                         android:singleLine="true" />
                 </com.google.android.material.textfield.TextInputLayout>
@@ -102,7 +101,6 @@
                         android:id="@+id/deviceTokenInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/device_token_hint"
                         android:singleLine="true" />
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
@@ -261,21 +259,6 @@
                     android:textSize="14sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/accessibilityButton"
-                    app:icon="@drawable/ic_carbon_settings"
-                    app:iconTint="?attr/colorPrimary"
-                    app:iconSize="20dp"
-                    app:iconPadding="8dp"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:minHeight="48dp"
-                    android:text="@string/control_enable"
-                    android:textAllCaps="false"
-                    app:cornerRadius="0dp" />
-
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -374,32 +357,134 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/restricted_title"
+                    android:text="@string/setup_title"
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface" />
 
+                <!-- Step 1: Android 13+ only, toggled in code -->
+                <LinearLayout
+                    android:id="@+id/stepRestrictedBlock"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:background="@drawable/status_dot"
+                            android:backgroundTint="@color/carbon_blue_60"
+                            android:gravity="center"
+                            android:text="1"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="@string/step1_title"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnSurface" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginStart="32dp"
+                        android:text="@string/step1_body"
+                        android:textSize="13sp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/appInfoButton"
+                        app:icon="@drawable/ic_carbon_info"
+                        app:iconTint="#FFFFFF"
+                        app:iconSize="20dp"
+                        app:iconPadding="8dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:minHeight="48dp"
+                        android:text="@string/open_app_info"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/carbon_red"
+                        app:cornerRadius="0dp" />
+                </LinearLayout>
+
+                <!-- Step 2 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:background="@drawable/status_dot"
+                        android:backgroundTint="@color/carbon_blue_60"
+                        android:gravity="center"
+                        android:text="2"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/step2_title"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface" />
+                </LinearLayout>
+
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/restricted_steps"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginStart="32dp"
+                    android:text="@string/step2_body"
                     android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/appInfoButton"
-                    app:icon="@drawable/ic_carbon_info"
-                    app:iconTint="#FFFFFF"
+                    android:id="@+id/accessibilityButton"
+                    app:icon="@drawable/ic_carbon_settings"
+                    app:iconTint="?attr/colorPrimary"
                     app:iconSize="20dp"
                     app:iconPadding="8dp"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="8dp"
                     android:minHeight="48dp"
-                    android:text="@string/open_app_info"
+                    android:text="@string/control_enable"
                     android:textAllCaps="false"
-                    app:backgroundTint="@color/carbon_red"
+                    app:cornerRadius="0dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/checkAgainButton"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:minHeight="48dp"
+                    android:text="@string/check_again"
+                    android:textAllCaps="false"
                     app:cornerRadius="0dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

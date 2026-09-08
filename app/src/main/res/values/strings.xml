@@ -34,8 +34,17 @@
     <string name="nav_back">Back</string>
     <string name="nav_home">Home</string>
 
-    <string name="restricted_title">Can not turn on Axie Control?</string>
-    <string name="restricted_steps">Side-loaded apps are blocked by Restricted settings.\n\n1. Tap App info below.\n2. Tap the menu (top right) then Allow restricted settings.\n3. Come back here and enable Axie Control.</string>
+    <string name="setup_title">Set up remote control</string>
+    <string name="setup_message">Axie Remote needs two system approvals to inject taps and button presses. Takes about 30 seconds.</string>
+    <string name="start_setup">Start setup</string>
+    <string name="action_later">Later</string>
+    <string name="step1_title">1 · Allow restricted settings</string>
+    <string name="step1_body">Side-loaded apps are blocked until you allow it: App info → menu (top right) → Allow restricted settings. Needed on Android 13 and newer only.</string>
+    <string name="step2_title">2 · Enable Axie Control</string>
+    <string name="step2_body">Accessibility settings → Downloaded apps → Axie Control → turn it on.</string>
+    <string name="check_again">Check again</string>
+    <string name="setup_done">Remote control is on.</string>
+    <string name="setup_not_yet">Still off — finish the steps above, then check again.</string>
     <string name="open_app_info">App info</string>
 
     <string name="section_updates">Updates</string>
@@ -52,7 +61,14 @@
     <string name="updates_failed">Check failed — retry on a network.</string>
     <string name="updates_need_sources">Allow Install unknown apps for Axie Remote, then retry.</string>
 
-    <string name="footer_version">v0.1.2 · com.axie.remote · side-loaded build</string>
+    <string name="footer_version">v0.1.3 · com.axie.remote · side-loaded build</string>
+
+    <string name="notif_rationale_title">Allow notifications?</string>
+    <string name="notif_rationale_message">Android shows screen sharing through a persistent notification. Without it, sharing still works but you will not see the indicator. You can change this later in App info.</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_not_now">Not now</string>
+    <string name="a11y_rationale_title">Enable remote control?</string>
+    <string name="a11y_rationale_message">This turns on the Axie Control accessibility service so a remote viewer can tap, swipe and press Back and Home for you. Nothing is enabled until you confirm in system settings.</string>
 
     <string name="accessibility_description">Lets Axie Remote tap, swipe and press system buttons on your behalf during a remote-control session.</string>
     <string name="notif_channel_name">Screen sharing</string>

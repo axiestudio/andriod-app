@@ -14,6 +14,8 @@ if [ ! -f "$APK" ]; then
 fi
 
 "$ADB" devices
-"$ADB" install -r "$APK"
+# -r reinstall keeping data, -g pre-grant runtime permissions (e.g. notifications).
+# USB-installed apps are also exempt from Android 13+ Restricted settings.
+"$ADB" install -r -g "$APK"
 echo "installed: $APK"
 echo "launch: $ADB shell am start -n com.axie.remote/.MainActivity"
