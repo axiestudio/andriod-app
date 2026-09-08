@@ -45,13 +45,29 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/section_connection"
-                    android:textSize="12sp"
-                    android:letterSpacing="0.02"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/section_connection"
+                        android:textSize="12sp"
+                        android:letterSpacing="0.02"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="@string/tip_connection"
+                        android:src="@drawable/ic_carbon_info"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:tooltipText="@string/tip_connection" />
+                </LinearLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
@@ -61,8 +77,7 @@
                     app:boxCornerRadiusTopStart="0dp"
                     app:boxCornerRadiusTopEnd="0dp"
                     app:boxCornerRadiusBottomStart="0dp"
-                    app:boxCornerRadiusBottomEnd="0dp"
-                    app:helperText="@string/server_url_helper">
+                    app:boxCornerRadiusBottomEnd="0dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/serverUrlInput"
@@ -109,13 +124,29 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/section_sharing"
-                    android:textSize="12sp"
-                    android:letterSpacing="0.02"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/section_sharing"
+                        android:textSize="12sp"
+                        android:letterSpacing="0.02"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="@string/tip_sharing"
+                        android:src="@drawable/ic_carbon_info"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:tooltipText="@string/tip_sharing" />
+                </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -189,13 +220,29 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/section_control"
-                    android:textSize="12sp"
-                    android:letterSpacing="0.02"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/section_control"
+                        android:textSize="12sp"
+                        android:letterSpacing="0.02"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="@string/tip_control"
+                        android:src="@drawable/ic_carbon_info"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:tooltipText="@string/tip_control" />
+                </LinearLayout>
 
                 <TextView
                     android:layout_width="match_parent"
@@ -240,13 +287,20 @@
                         app:icon="@drawable/ic_carbon_touch"
                         app:iconTint="?attr/colorPrimary"
                         app:iconSize="20dp"
-                        app:iconPadding="8dp"
+                        app:iconPadding="0dp"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:minHeight="48dp"
-                        android:text="@string/test_tap"
+                        android:minWidth="48dp"
+                        android:insetLeft="0dp"
+                        android:insetRight="0dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text=""
+                        android:contentDescription="@string/test_tap"
+                        android:tooltipText="@string/tip_tap"
                         android:textAllCaps="false"
                         app:cornerRadius="0dp" />
 
@@ -255,14 +309,21 @@
                         app:icon="@drawable/ic_carbon_back"
                         app:iconTint="?attr/colorPrimary"
                         app:iconSize="20dp"
-                        app:iconPadding="8dp"
+                        app:iconPadding="0dp"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
                         android:minHeight="48dp"
-                        android:text="@string/nav_back"
+                        android:minWidth="48dp"
+                        android:insetLeft="0dp"
+                        android:insetRight="0dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text=""
+                        android:contentDescription="@string/nav_back"
+                        android:tooltipText="@string/tip_back"
                         android:textAllCaps="false"
                         app:cornerRadius="0dp" />
 
@@ -271,17 +332,156 @@
                         app:icon="@drawable/ic_carbon_home"
                         app:iconTint="?attr/colorPrimary"
                         app:iconSize="20dp"
-                        app:iconPadding="8dp"
+                        app:iconPadding="0dp"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:layout_weight="1"
                         android:minHeight="48dp"
-                        android:text="@string/nav_home"
+                        android:minWidth="48dp"
+                        android:insetLeft="0dp"
+                        android:insetRight="0dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text=""
+                        android:contentDescription="@string/nav_home"
+                        android:tooltipText="@string/tip_home"
                         android:textAllCaps="false"
                         app:cornerRadius="0dp" />
                 </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Restricted-settings guidance (shown only while control is off) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/guidanceStrip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            app:cardCornerRadius="0dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/carbon_red"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/restricted_title"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/restricted_steps"
+                    android:textSize="13sp"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/appInfoButton"
+                    app:icon="@drawable/ic_carbon_info"
+                    app:iconTint="#FFFFFF"
+                    app:iconSize="20dp"
+                    app:iconPadding="8dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:minHeight="48dp"
+                    android:text="@string/open_app_info"
+                    android:textAllCaps="false"
+                    app:backgroundTint="@color/carbon_red"
+                    app:cornerRadius="0dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Updates tile -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            app:cardCornerRadius="0dp"
+            app:cardElevation="0dp"
+            app:strokeColor="?attr/colorOutline"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/section_updates"
+                        android:textSize="12sp"
+                        android:letterSpacing="0.02"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="@string/tip_updates"
+                        android:src="@drawable/ic_carbon_info"
+                        android:tint="?attr/colorOnSurfaceVariant"
+                        android:tooltipText="@string/tip_updates" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/versionText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:textSize="14sp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:id="@+id/updateStateText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/updates_state_idle"
+                    android:textSize="14sp"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/checkUpdatesButton"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:minHeight="48dp"
+                    android:text="@string/updates_check"
+                    android:textAllCaps="false"
+                    app:cornerRadius="0dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/downloadButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:minHeight="48dp"
+                    android:textAllCaps="false"
+                    android:visibility="gone"
+                    app:cornerRadius="0dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

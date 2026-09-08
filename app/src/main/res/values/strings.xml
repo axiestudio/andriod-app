@@ -4,13 +4,14 @@
     <string name="app_tagline">Screen stream + remote control</string>
 
     <string name="section_connection">Connection</string>
+    <string name="tip_connection">Relay server and pairing token. Saved on this device; used when remote viewing connects in a later release.</string>
     <string name="server_url_label">Relay server URL</string>
     <string name="server_url_hint">wss://relay.example.com/device</string>
-    <string name="server_url_helper">Saved on this device. Used when remote viewing connects.</string>
     <string name="device_token_label">Device token</string>
     <string name="device_token_hint">Pairing token from the CRM</string>
 
     <string name="section_sharing">Screen sharing</string>
+    <string name="tip_sharing">Streams this phone screen. Android shows a system dialog every time — sharing can never start silently.</string>
     <string name="status_idle">Idle — start sharing, then accept the system dialog.</string>
     <string name="status_starting">Starting capture…</string>
     <string name="status_sharing">Sharing screen — live.</string>
@@ -19,17 +20,39 @@
     <string name="stop_sharing">Stop sharing</string>
 
     <string name="section_control">Remote control</string>
-    <string name="control_description">Allow remote taps, swipes and system buttons via the accessibility service.</string>
-    <string name="control_enable">Open accessibility settings</string>
+    <string name="tip_control">Lets a remote viewer tap, swipe and press Back and Home through the accessibility service.</string>
+    <string name="control_description">Remote taps, swipes and system buttons.</string>
+    <string name="control_enable">Accessibility settings</string>
     <string name="control_on">Control service is on.</string>
-    <string name="control_off">Control service is off — enable it to allow remote input.</string>
+    <string name="control_off">Control service is off.</string>
     <string name="test_tap">Test tap</string>
+    <string name="tip_tap">Send a test tap to the center of the screen</string>
+    <string name="tip_back">Press the system Back button</string>
+    <string name="tip_home">Press the system Home button</string>
     <string name="tap_ok">Test tap dispatched.</string>
     <string name="tap_missing">Control service is off — enable it first.</string>
     <string name="nav_back">Back</string>
     <string name="nav_home">Home</string>
 
-    <string name="footer_version">v0.1.1 · com.axie.remote · side-loaded build</string>
+    <string name="restricted_title">Can not turn on Axie Control?</string>
+    <string name="restricted_steps">Side-loaded apps are blocked by Restricted settings.\n\n1. Tap App info below.\n2. Tap the menu (top right) then Allow restricted settings.\n3. Come back here and enable Axie Control.</string>
+    <string name="open_app_info">App info</string>
+
+    <string name="section_updates">Updates</string>
+    <string name="tip_updates">Checks the public release feed for a newer signed APK and installs it on this device.</string>
+    <string name="current_version">This device: v%1$s</string>
+    <string name="updates_state_idle">Never checked.</string>
+    <string name="updates_check">Check for updates</string>
+    <string name="updates_checking">Checking…</string>
+    <string name="updates_up_to_date">Up to date.</string>
+    <string name="updates_available">Version %1$s available.</string>
+    <string name="updates_download">Download and install %1$s</string>
+    <string name="updates_downloading">Downloading… %1$d%%</string>
+    <string name="updates_installing">Downloaded — confirming install…</string>
+    <string name="updates_failed">Check failed — retry on a network.</string>
+    <string name="updates_need_sources">Allow Install unknown apps for Axie Remote, then retry.</string>
+
+    <string name="footer_version">v0.1.2 · com.axie.remote · side-loaded build</string>
 
     <string name="accessibility_description">Lets Axie Remote tap, swipe and press system buttons on your behalf during a remote-control session.</string>
     <string name="notif_channel_name">Screen sharing</string>
