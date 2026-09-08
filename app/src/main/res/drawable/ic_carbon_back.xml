@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IBM Carbon icon "arrow-left" v11.87.0 (Apache-2.0, see mobile/CARBON-ICONS-NOTICE.md),
+     converted to VectorDrawable. Tint at usage via android:tint / app:iconTint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path android:fillColor="#FF000000" android:pathData="M 14 26 L 15.41 24.59 L 7.83 17 L 28 17 L 28 15 L 7.83 15 L 15.41 7.41 L 14 6 L 4 16 L 14 26 z" />
+</vector>

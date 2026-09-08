@@ -143,6 +143,10 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/startButton"
+                    app:icon="@drawable/ic_carbon_play"
+                    app:iconTint="#FFFFFF"
+                    app:iconSize="20dp"
+                    app:iconPadding="8dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
@@ -153,6 +157,10 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/stopButton"
+                    app:icon="@drawable/ic_carbon_stop"
+                    app:iconTint="?attr/colorPrimary"
+                    app:iconSize="20dp"
+                    app:iconPadding="8dp"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -208,6 +216,10 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/accessibilityButton"
+                    app:icon="@drawable/ic_carbon_settings"
+                    app:iconTint="?attr/colorPrimary"
+                    app:iconSize="20dp"
+                    app:iconPadding="8dp"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -225,6 +237,10 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/tapTestButton"
+                        app:icon="@drawable/ic_carbon_touch"
+                        app:iconTint="?attr/colorPrimary"
+                        app:iconSize="20dp"
+                        app:iconPadding="8dp"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -236,6 +252,10 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/backButton"
+                        app:icon="@drawable/ic_carbon_back"
+                        app:iconTint="?attr/colorPrimary"
+                        app:iconSize="20dp"
+                        app:iconPadding="8dp"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -248,6 +268,10 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/homeButton"
+                        app:icon="@drawable/ic_carbon_home"
+                        app:iconTint="?attr/colorPrimary"
+                        app:iconSize="20dp"
+                        app:iconPadding="8dp"
                         style="@style/Widget.Material3.Button.OutlinedButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"

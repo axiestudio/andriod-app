@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IBM Carbon icon "stop" v11.87.0 (Apache-2.0, see mobile/CARBON-ICONS-NOTICE.md),
+     converted to VectorDrawable. Tint at usage via android:tint / app:iconTint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path android:fillColor="#FF000000" android:pathData="M 24 8 V 24 H 8 V 8 H 24 m 0 -2 H 8 A 2 2 0 0 0 6 8 V 24 a 2 2 0 0 0 2 2 H 24 a 2 2 0 0 0 2 -2 V 8 a 2 2 0 0 0 -2 -2 Z" />
+</vector>

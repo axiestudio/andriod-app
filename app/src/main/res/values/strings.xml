@@ -29,7 +29,7 @@
     <string name="nav_back">Back</string>
     <string name="nav_home">Home</string>
 
-    <string name="footer_version">v0.1.0 · com.axie.remote · side-loaded build</string>
+    <string name="footer_version">v0.1.1 · com.axie.remote · side-loaded build</string>
 
     <string name="accessibility_description">Lets Axie Remote tap, swipe and press system buttons on your behalf during a remote-control session.</string>
     <string name="notif_channel_name">Screen sharing</string>

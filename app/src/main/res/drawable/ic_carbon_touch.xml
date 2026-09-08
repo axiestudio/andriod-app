@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IBM Carbon icon "touch-1" v11.87.0 (Apache-2.0, see mobile/CARBON-ICONS-NOTICE.md),
+     converted to VectorDrawable. Tint at usage via android:tint / app:iconTint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path android:fillColor="#FF000000" android:pathData="M 20 8 H 18 A 5 5 0 0 0 8 8 H 6 A 7 7 0 0 1 20 8 Z" />
+    <path android:fillColor="#FF000000" android:pathData="M 25 15 a 2.94 2.94 0 0 0 -1.47 .4 A 3 3 0 0 0 21 14 a 2.94 2.94 0 0 0 -1.47 .4 A 3 3 0 0 0 16 13.18 V 8 h 0 a 3 3 0 0 0 -6 0 V 19.1 L 7.77 17.58 h 0 A 2.93 2.93 0 0 0 6 17 a 3 3 0 0 0 -2.12 5.13 l 8 7.3 A 6.16 6.16 0 0 0 16 31 h 5 a 7 7 0 0 0 7 -7 V 18 A 3 3 0 0 0 25 15 Z m 1 9 a 5 5 0 0 1 -5 5 H 16 a 4.17 4.17 0 0 1 -2.76 -1 L 5.29 20.7 A 1 1 0 0 1 5 20 a 1 1 0 0 1 1.6 -.8 L 12 22.9 V 8 a 1 1 0 0 1 2 0 h 0 V 19 h 2 V 16 a 1 1 0 0 1 2 0 v 3 h 2 V 17 a 1 1 0 0 1 2 0 v 2 h 2 V 18 a 1 1 0 0 1 2 0 Z" />
+</vector>

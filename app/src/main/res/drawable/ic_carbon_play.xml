@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IBM Carbon icon "play" v11.87.0 (Apache-2.0, see mobile/CARBON-ICONS-NOTICE.md),
+     converted to VectorDrawable. Tint at usage via android:tint / app:iconTint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path android:fillColor="#FF000000" android:pathData="M 7 28 a 1 1 0 0 1 -1 -1 V 5 a 1 1 0 0 1 1.4819 -.8763 l 20 11 a 1 1 0 0 1 0 1.7525 l -20 11 A 1.0005 1.0005 0 0 1 7 28 Z M 8 6.6909 V 25.3088 L 24.9248 16 Z" />
+</vector>
