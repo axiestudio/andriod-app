@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private val presence = PresenceEmitter(
         signalBase = { PairingPrefs.crmSignalBase(applicationContext) },
         token = { PairingPrefs.load(applicationContext)?.token.orEmpty() },
+        deviceId = { PairingPrefs.load(applicationContext)?.serverDeviceId.orEmpty() },
         onResult = { name ->
             // Presence is server-side; refresh the visible state only.
             if (name != null) loadPairing()
@@ -436,6 +437,7 @@ class MainActivity : AppCompatActivity() {
         pairedNameText.text =
             p.name.ifBlank { getString(R.string.pair_status_unknown) }
         pairedStatusText.text = when {
+            p.reachable && p.viewerOnline -> getString(R.string.pair_verified_two_way)
             p.reachable -> getString(R.string.pair_verified)
             p.error != null -> getString(R.string.pair_probe_fail, p.error)
             else -> getString(R.string.pair_status_unknown)

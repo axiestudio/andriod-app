@@ -233,6 +233,12 @@ class WebRtcClient(
                         val row = signals.getJSONObject(index)
                         cursor = maxOf(cursor, parseTimestamp(row.optString("createdAt")))
                         when (row.optString("kind")) {
+                            "ping" -> {
+                                // Web→phone presence probe: echo the payload
+                                // straight back so the web can compute the
+                                // round-trip and mark this phone reachable.
+                                postSignal("pong", row.optJSONObject("payload") ?: JSONObject())
+                            }
                             "offer" -> if (!answered) {
                                 answered = true
                                 answerPeer(row.getJSONObject("payload").getJSONObject("sdp"))
@@ -326,6 +332,29 @@ class WebRtcClient(
                 }
             } catch (error: Exception) {
                 Log.w(TAG, "register failed", error)
+            }
+        }
+    }
+
+    /**
+     * Web→phone presence probe answered outside a WebRTC session: POSTs a
+     * `pong` mailbox row echoing the web's payload (the sentAt timestamp),
+     * which the web reads back to confirm the full loop
+     * web → mailbox → phone → mailbox → web.
+     */
+    fun replyToPing(signalBase: String, token: String, payload: JSONObject) {
+        executor.execute {
+            try {
+                http.postJson(
+                    "$signalBase/device/signals",
+                    JSONObject()
+                        .put("token", token)
+                        .put("kind", "pong")
+                        .put("payload", payload)
+                        .toString(),
+                )
+            } catch (error: Exception) {
+                Log.w(TAG, "pong post failed", error)
             }
         }
     }

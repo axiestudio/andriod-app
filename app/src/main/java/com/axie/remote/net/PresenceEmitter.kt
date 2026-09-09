@@ -22,6 +22,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class PresenceEmitter(
 	private val signalBase: () -> String?,
 	private val token: () -> String?,
+	private val deviceId: () -> String = { "" },
 	private val onResult: ((name: String?) -> Unit)? = null,
 ) {
 	private val running = AtomicBoolean(false)
@@ -33,13 +34,14 @@ class PresenceEmitter(
 			if (!running.get()) return
 			val base = signalBase()
 			val tok = token()
+			val id = deviceId()
 			if (base != null && !tok.isNullOrBlank()) {
 				Thread({
 					var name: String? = null
 					try {
 						val body = JSONObject().apply {
 							put("token", tok)
-							put("deviceId", "presence")
+							put("deviceId", id.ifBlank { "presence" })
 						}.toString()
 						val request = Request.Builder()
 							.url("$base/device/register")

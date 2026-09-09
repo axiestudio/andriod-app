@@ -34,6 +34,10 @@ data class Pairing(
 	val reachable: Boolean = false,
 	/** Last probe failure, for the tiny error line under the paired name. */
 	val error: String? = null,
+	/** Server-assigned device row id — sticky identity across re-registers. */
+	val serverDeviceId: String? = null,
+	/** Mirrored from register/poll responses: the CRM web UI pinged recently. */
+	val viewerOnline: Boolean = false,
 )
 
 object PairingPrefs {
@@ -42,6 +46,8 @@ object PairingPrefs {
 	const val KEY_TOKEN = "device_token"
 	const val KEY_NAME = "device_name"
 	const val KEY_REACHABLE = "device_reachable"
+	const val KEY_SERVER_ID = "server_device_id"
+	const val KEY_VIEWER_ONLINE = "viewer_online"
 	const val SCHEME = "axie-remote"
 	const val HOST = "pair"
 	const val VERSION = "1"
@@ -72,6 +78,8 @@ object PairingPrefs {
 			.putString(KEY_NAME, pairing.name)
 			.putString(KEY_URL, pairing.serverUrl)
 			.putString(KEY_TOKEN, pairing.token)
+			.putString(KEY_SERVER_ID, pairing.serverDeviceId)
+			.putBoolean(KEY_VIEWER_ONLINE, pairing.viewerOnline)
 			.apply()
 	}
 
@@ -85,6 +93,8 @@ object PairingPrefs {
 			token = token,
 			name = prefs.getString(KEY_NAME, null).orEmpty(),
 			reachable = prefs.getBoolean(KEY_REACHABLE, false),
+			serverDeviceId = prefs.getString(KEY_SERVER_ID, null),
+			viewerOnline = prefs.getBoolean(KEY_VIEWER_ONLINE, false),
 		)
 	}
 
@@ -137,7 +147,13 @@ object PairingPrefs {
 				val json = runCatching { JSONObject(text) }.getOrNull()
 				when {
 					response.isSuccessful && json?.optBoolean("ok") == true ->
-						pairing.copy(reachable = true, error = null, name = json.optString("name").ifBlank { pairing.name })
+						pairing.copy(
+							reachable = true,
+							error = null,
+							name = json.optString("name").ifBlank { pairing.name },
+							serverDeviceId = json.optString("deviceId").ifBlank { pairing.serverDeviceId },
+							viewerOnline = json.optBoolean("viewerOnline", false),
+						)
 					response.code == 404 ->
 						pairing.copy(reachable = false, error = "token no longer valid — scan the QR again")
 					else ->
