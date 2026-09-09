@@ -51,13 +51,19 @@ class MainActivity : AppCompatActivity() {
      * open: re-runs the pairing probe every 40 s (the roster marks a device
      * online for 45 s after each register). Lifecycle-bound in onResume/onPause.
      */
+    /** Epoch ms of the last successful server check-in (drives the UI text). */
+    @Volatile
+    private var lastCheckInAt: Long = 0L
+
     private val presence = PresenceEmitter(
         signalBase = { PairingPrefs.crmSignalBase(applicationContext) },
         token = { PairingPrefs.load(applicationContext)?.token.orEmpty() },
         deviceId = { PairingPrefs.load(applicationContext)?.serverDeviceId.orEmpty() },
         onResult = { name ->
-            // Presence is server-side; refresh the visible state only.
-            if (name != null) loadPairing()
+            if (name != null) {
+                lastCheckInAt = System.currentTimeMillis()
+            }
+            runOnUiThread { renderPairing() }
         },
     )
 
@@ -239,6 +245,9 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         refreshAll()
         statsHandler.post(statsTick)
+        loadPairing()
+        // Prove the pairing on every open — the user must never wonder.
+        verifyPairing()
         presence.start()
         if (!autoChecked) {
             autoChecked = true
@@ -402,7 +411,9 @@ class MainActivity : AppCompatActivity() {
     private var pairing: Pairing? = null
 
     private fun loadPairing() {
-        pairing = PairingPrefs.load(this)
+        pairing = PairingPrefs.heal(PairingPrefs.load(this))
+        // Persist the healed address so the sharing path uses it too.
+        pairing?.let { PairingPrefs.save(this, it) }
         renderPairing()
     }
 
@@ -435,20 +446,31 @@ class MainActivity : AppCompatActivity() {
         unpairedBlock.visibility = if (p == null) View.VISIBLE else View.GONE
         if (p == null) return
         pairedNameText.text =
-            p.name.ifBlank { getString(R.string.pair_status_unknown) }
+            p.name.ifBlank { getString(R.string.app_name) }
+        val sinceCheckIn = (System.currentTimeMillis() - lastCheckInAt) / 1000
+        val checkInLine =
+            if (lastCheckInAt == 0L) getString(R.string.checkin_never)
+            else getString(R.string.checkin_ago, pluralSeconds(sinceCheckIn))
         pairedStatusText.text = when {
-            p.reachable && p.viewerOnline -> getString(R.string.pair_verified_two_way)
-            p.reachable -> getString(R.string.pair_verified)
-            p.error != null -> getString(R.string.pair_probe_fail, p.error)
-            else -> getString(R.string.pair_status_unknown)
+            p.reachable && p.viewerOnline -> getString(R.string.status_two_way)
+            p.reachable -> getString(R.string.status_phone_online)
+            else -> getString(R.string.status_waiting)
         }
         pairedStatusText.setTextColor(
             ContextCompat.getColor(
                 this,
-                if (p.reachable) R.color.carbon_green else R.color.carbon_gray_idle,
+                when {
+                    p.reachable && p.viewerOnline -> R.color.carbon_green
+                    p.reachable -> R.color.carbon_green
+                    else -> R.color.carbon_gray_idle
+                },
             ),
         )
-        pairedDetailText.setText(R.string.pair_idle)
+        pairedDetailText.text = when {
+            p.reachable && p.viewerOnline -> getString(R.string.detail_web_watching, checkInLine)
+            p.reachable -> getString(R.string.detail_web_closed, checkInLine)
+            else -> getString(R.string.detail_offline, checkInLine)
+        }
         connectionStatusText.visibility =
             if (p.error != null && !p.reachable) View.VISIBLE else View.GONE
         connectionStatusText.text =
@@ -457,6 +479,13 @@ class MainActivity : AppCompatActivity() {
             } else {
                 ""
             }
+    }
+
+    private fun pluralSeconds(seconds: Long): String = when {
+        seconds < 5 -> getString(R.string.just_now)
+        seconds < 60 -> getString(R.string.seconds_ago, seconds)
+        seconds < 3600 -> getString(R.string.minutes_ago, seconds / 60)
+        else -> getString(R.string.hours_ago, seconds / 3600)
     }
 
     private fun confirmUnpair() {

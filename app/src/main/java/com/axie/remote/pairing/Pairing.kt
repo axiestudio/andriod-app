@@ -157,12 +157,38 @@ object PairingPrefs {
 					response.code == 404 ->
 						pairing.copy(reachable = false, error = "token no longer valid — scan the QR again")
 					else ->
-						pairing.copy(reachable = false, error = "unreachable (HTTP ${response.code})")
+						// Surface the server's own words — a bare status code
+						// hides exactly the kind of edge case this bit us with.
+						pairing.copy(
+							reachable = false,
+							error = "HTTP ${response.code}: ${text.take(140).ifBlank { "no body" }}",
+						)
 				}
 			}
 		} catch (e: Exception) {
 			pairing.copy(reachable = false, error = e.message ?: "network error")
 		}
+	}
+
+	/**
+	 * Baked-in gate fallback. The QR's token works through ANY base that
+	 * reaches the CRM API (the gate only proxies the mailbox), so a pairing
+	 * stored by an older build with a stale/legacy URL can be healed to this
+	 * without re-scanning.
+	 */
+	const val DEFAULT_RELAY = "https://socialupload-api.vercel.app/rest/mobile"
+
+	/**
+	 * Self-heal: pairings stored by older builds may carry a URL that is not
+	 * a CRM signaling base (manual 0.1.6 entry, relay host without the
+	 * /rest/mobile suffix). The token is what authenticates — rewrite the
+	 * URL to the baked-in gate and persist. Returns the (possibly healed)
+	 * pairing; null stays null.
+	 */
+	fun heal(pairing: Pairing?): Pairing? {
+		if (pairing == null) return null
+		if (crmSignalBaseOf(pairing.serverUrl) != null) return pairing
+		return pairing.copy(serverUrl = DEFAULT_RELAY, error = "repaired outdated relay address")
 	}
 
 	/** https spelling of a relay URL when it targets the CRM signaling base. */
