@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
-import android.util.Log
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -28,7 +27,9 @@ import androidx.lifecycle.lifecycleScope
 import com.axie.remote.capture.ScreenCaptureService
 import com.axie.remote.control.ControlAccessibilityService
 import com.axie.remote.net.SignalingClient
-import com.axie.remote.net.WebRtcClient
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import com.axie.remote.pairing.PairingPrefs
 import com.axie.remote.scan.ScanActivity
 import com.axie.remote.update.UpdateManager
@@ -67,14 +68,6 @@ class MainActivity : AppCompatActivity() {
 
     /** Guards switch listeners while we reflect system truth (no event loops). */
     private var suppressSwitchEvents = false
-
-    /**
-     * WebRTC transport (SPEC.md §5.4): when the pairing URL points at the CRM
-     * signaling API (`…/rest/mobile`), Start Sharing runs the P2P client
-     * instead of the MJPEG relay service. Input commands arrive on the
-     * "control" DataChannel and are forwarded to the accessibility service.
-     */
-    private var webRtcClient: WebRtcClient? = null
 
     private var pendingUpdate: UpdateManager.UpdateInfo? = null
     private var autoChecked = false
@@ -429,6 +422,13 @@ class MainActivity : AppCompatActivity() {
         serverUrlLayout.error = null
         connectionStatusText.setText(R.string.conn_testing)
         val token = deviceTokenInput.text?.toString().orEmpty()
+        val signalBase = crmSignalBase()
+        if (signalBase != null) {
+            // CRM signaling (WebRTC): probe the device register endpoint with
+            // the pairing token — HTTP semantics, not WebSocket semantics.
+            testCrmSignalBase(signalBase, token)
+            return
+        }
         SignalingClient.testConnection(normalized, token) { ok, message ->
             runOnUiThread {
                 connectionStatusText.text = getString(
@@ -437,6 +437,49 @@ class MainActivity : AppCompatActivity() {
                 refreshSession()
             }
         }
+    }
+
+    /**
+     * HTTP probe for CRM pairings: POST /device/register with the stored
+     * token. 200 = token valid (shows the paired name), 404 = unknown token,
+     * 401/403 = malformed. Never speaks WebSocket — the old ws:// probe
+     * reported "expected HTTP 101 but was 404" against the REST API.
+     */
+    private fun testCrmSignalBase(signalBase: String, token: String) {
+        Thread({
+            var ok = false
+            var message: String
+            try {
+                val body = JSONObject().apply {
+                    put("token", token)
+                    put("deviceId", "probe")
+                }.toString()
+                val request = okhttp3.Request.Builder()
+                    .url("$signalBase/device/register")
+                    .post(body.toRequestBody("application/json".toMediaType()))
+                    .build()
+                okhttp3.OkHttpClient().newCall(request).execute().use { response ->
+                    val text = response.body?.string().orEmpty()
+                    val json = runCatching { JSONObject(text) }.getOrNull()
+                    when {
+                        response.isSuccessful && json?.optBoolean("ok") == true -> {
+                            ok = true
+                            message = getString(R.string.conn_ok, json.optString("name"))
+                        }
+                        response.code == 404 ->
+                            message = getString(R.string.conn_unknown_token)
+                        else ->
+                            message = getString(R.string.conn_failed, "HTTP ${response.code}")
+                    }
+                }
+            } catch (e: Exception) {
+                message = getString(R.string.conn_failed, e.message ?: "network error")
+            }
+            runOnUiThread {
+                connectionStatusText.text = message
+                refreshSession()
+            }
+        }, "AxieCrmProbe").start()
     }
 
     /**
@@ -465,37 +508,24 @@ class MainActivity : AppCompatActivity() {
      * the signaling mailbox and streams the screen. Input from the viewer's
      * DataChannel lands in the same accessibility service the relay used.
      */
+    /**
+     * P2P session: hand the consent to [ScreenCaptureService] in WebRTC mode.
+     * The service must promote itself to a mediaProjection foreground service
+     * BEFORE the projection is created (Android 14 requirement — see
+     * developer.android.com/about/versions/14/changes/fgs-types-required), so
+     * the transport lives inside the FGS instead of the activity.
+     */
     private fun startWebRtcSession(resultCode: Int, data: Intent) {
         val signalBase = crmSignalBase() ?: return
-        val token = deviceTokenInput.text?.toString().orEmpty()
-        val client = WebRtcClient(
-            context = applicationContext,
-            signalBase = signalBase,
-            rawToken = token,
-            onInput = { command ->
-                val handled = ControlAccessibilityService.handleRemoteCommand(command)
-                if (!handled) Log.w(TAG, "unhandled control command: $command")
-            },
-            onState = { state ->
-                runOnUiThread {
-                    sessionDetailText.text = "WebRTC: $state"
-                    refreshAll()
-                }
-            },
-            onError = { message ->
-                runOnUiThread {
-                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                    setSharingState(SharingState.IDLE)
-                    webRtcClient = null
-                }
-            },
-        )
-        webRtcClient = client
-        setSharingState(SharingState.STARTING)
-        client.register { name ->
-            Log.i(TAG, "registered with CRM as \"$name\"")
+        val start = Intent(this, ScreenCaptureService::class.java).apply {
+            action = ScreenCaptureService.ACTION_START
+            putExtra(ScreenCaptureService.EXTRA_RESULT_CODE, resultCode)
+            putExtra(ScreenCaptureService.EXTRA_RESULT_DATA, data)
+            putExtra(ScreenCaptureService.EXTRA_SERVER_URL, signalBase)
+            putExtra(ScreenCaptureService.EXTRA_DEVICE_TOKEN, deviceTokenInput.text?.toString().orEmpty())
+            putExtra(ScreenCaptureService.EXTRA_MODE, ScreenCaptureService.MODE_WEBRTC)
         }
-        client.onCaptureGranted(resultCode, data)
+        ContextCompat.startForegroundService(this, start)
     }
 
     // ---- QR pairing ---------------------------------------------------------
@@ -636,10 +666,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopSharing() {
-        webRtcClient?.let { client ->
-            client.stop()
-        }
-        webRtcClient = null
+        // One stop path for both transports — the capture service owns the
+        // MJPEG relay and the P2P WebRTC session alike.
         startService(
             Intent(this, ScreenCaptureService::class.java).apply {
                 action = ScreenCaptureService.ACTION_STOP

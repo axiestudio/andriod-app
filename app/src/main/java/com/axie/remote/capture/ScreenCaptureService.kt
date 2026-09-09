@@ -1,5 +1,6 @@
 package com.axie.remote.capture
 
+import android.app.Activity
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -29,6 +30,7 @@ import androidx.core.app.ServiceCompat
 import com.axie.remote.R
 import com.axie.remote.control.ControlAccessibilityService
 import com.axie.remote.net.SignalingClient
+import com.axie.remote.net.WebRtcClient
 import com.axie.remote.sensors.OrientationReporter
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicLong
@@ -61,6 +63,10 @@ class ScreenCaptureService : Service() {
         const val EXTRA_RESULT_DATA = "resultData"
         const val EXTRA_SERVER_URL = "serverUrl"
         const val EXTRA_DEVICE_TOKEN = "deviceToken"
+        /** Transport selector: "relay" (MJPEG WS, default) or "webrtc" (P2P). */
+        const val EXTRA_MODE = "mode"
+        const val MODE_RELAY = "relay"
+        const val MODE_WEBRTC = "webrtc"
         private const val TAG = "AxieRemote"
         private const val CHANNEL_ID = "axie_screen_share"
         private const val NOTIF_ID = 42
@@ -91,6 +97,7 @@ class ScreenCaptureService : Service() {
     private var imageReader: ImageReader? = null
     private var worker: HandlerThread? = null
     private var signaling: SignalingClient? = null
+    private var webRtc: WebRtcClient? = null
     private var orientation: OrientationReporter? = null
     private val frames = AtomicLong(0)
     private var lastSentAt = 0L
@@ -129,6 +136,7 @@ class ScreenCaptureService : Service() {
                         resultData,
                         intent.getStringExtra(EXTRA_SERVER_URL).orEmpty(),
                         intent.getStringExtra(EXTRA_DEVICE_TOKEN).orEmpty(),
+                        intent.getStringExtra(EXTRA_MODE) ?: MODE_RELAY,
                     )
                 }
             }
@@ -140,8 +148,14 @@ class ScreenCaptureService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startCapture(resultCode: Int, resultData: Intent, serverUrl: String, token: String) {
-        if (mediaProjection != null) return // already running
+    private fun startCapture(
+        resultCode: Int,
+        resultData: Intent,
+        serverUrl: String,
+        token: String,
+        mode: String = MODE_RELAY,
+    ) {
+        if (mediaProjection != null || webRtc != null) return // already running
         sentFrames.set(0)
         createChannel()
         val notification = buildNotification("Starting screen capture…")
@@ -151,6 +165,14 @@ class ScreenCaptureService : Service() {
             notification,
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
         )
+
+        if (mode == MODE_WEBRTC) {
+            // P2P transport (SPEC.md §5.4): the FGS is now up, which is the
+            // Android 14 prerequisite for getMediaProjection — ScreenCapturerAndroid
+            // creates the projection internally from the consent intent.
+            startWebRtcSession(resultData, serverUrl, token)
+            return
+        }
 
         val manager = getSystemService(MediaProjectionManager::class.java)
         val projection = manager.getMediaProjection(resultCode, resultData)
@@ -291,6 +313,59 @@ class ScreenCaptureService : Service() {
         }
     }
 
+    /**
+     * P2P session hosted by THIS foreground service (SPEC.md §5.4). The FGS
+     * with type mediaProjection is already up — the documented Android 14
+     * prerequisite before getMediaProjection — so the capturer can create the
+     * projection from the consent intent.
+     */
+    private fun startWebRtcSession(resultData: Intent, serverUrl: String, token: String) {
+        isRunning = true
+        relayState = "connecting"
+        viewerCount = null
+        val httpsBase = serverUrl.trim().trimEnd('/').let {
+            when {
+                it.startsWith("https://") -> it
+                it.startsWith("http://") -> it
+                it.startsWith("wss://") -> "https://" + it.removePrefix("wss://")
+                it.startsWith("ws://") -> "http://" + it.removePrefix("ws://")
+                else -> it
+            }
+        }
+        webRtc = WebRtcClient(
+            context = applicationContext,
+            signalBase = httpsBase,
+            rawToken = token,
+            onInput = { msg ->
+                val ok = ControlAccessibilityService.handleRemoteCommand(msg)
+                Log.i(TAG, "remote ${msg.optString("type")} -> ${if (ok) "dispatched" else "FAILED"}")
+            },
+            onState = { state ->
+                relayState = when (state) {
+                    "live" -> "live"
+                    "connecting", "answering", "starting" -> "connecting"
+                    "failed" -> "failed"
+                    else -> "off"
+                }
+                when (state) {
+                    "live" -> updateNotification("Live — P2P sharing + remote control ready")
+                    "failed" -> updateNotification("P2P session failed")
+                    "closed" -> { stopCapture(); stopSelf() }
+                    else -> {}
+                }
+            },
+            onError = { message ->
+                Log.e(TAG, "WebRTC error: $message")
+                relayState = "failed"
+                updateNotification("P2P error: $message")
+            },
+        )
+        webRtc?.register { name -> Log.i(TAG, "registered with CRM as \"$name\"") }
+        webRtc?.onCaptureGranted(Activity.RESULT_OK, resultData)
+        updateNotification("P2P sharing — waiting for the viewer…")
+        Log.i(TAG, "WebRTC session started signalBase=$httpsBase")
+    }
+
     private fun deviceId(): String {
         val androidId = try {
             Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
@@ -299,6 +374,10 @@ class ScreenCaptureService : Service() {
     }
 
     private fun stopCapture() {
+        try { webRtc?.stop() } catch (e: Exception) {
+            Log.w(TAG, "stop WebRTC session failed", e)
+        }
+        webRtc = null
         try { orientation?.stop() } catch (e: Exception) {
             Log.w(TAG, "stop orientation reporter failed", e)
         }

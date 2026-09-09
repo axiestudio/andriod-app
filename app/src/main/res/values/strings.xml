@@ -64,6 +64,7 @@
     <string name="conn_testing">Testing…</string>
     <string name="conn_ok">Reachable: %1$s</string>
     <string name="conn_failed">Unreachable: %1$s</string>
+    <string name="conn_unknown_token">Paired, but the token is no longer valid — scan the QR again.</string>
     <string name="conn_invalid">Invalid URL — use ws(s)://host[:port][/path]. Sharing works offline without it.</string>
     <string name="test_connection">Test connection</string>
     <string name="scan_qr">Scan QR</string>

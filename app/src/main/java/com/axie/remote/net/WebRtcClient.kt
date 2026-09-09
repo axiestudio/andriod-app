@@ -68,6 +68,8 @@ class WebRtcClient(
     private var dataChannel: DataChannel? = null
     private var cursor: Long = System.currentTimeMillis() - 60_000
     private var running = false
+    /** Set before startCapture so a mid-session revocation is always observed. */
+    private var projectionCb: MediaProjection.Callback? = null
 
     /**
      * One consent round-trip: resolves the MediaProjection result intent, then
@@ -165,16 +167,18 @@ class WebRtcClient(
                 observeChannel(it)
             }
 
-            // Screen capture → video track.
-            capturer = ScreenCapturerAndroid(
-                data,
-                object : MediaProjection.Callback() {
-                    override fun onStop() {
-                        Log.w(TAG, "MediaProjection revoked by the user")
-                        stop()
-                    }
-                },
-            )
+            // Screen capture → video track. The revocation callback is
+            // registered BEFORE capture starts so "Stop streaming" from
+            // Quick Settings is never missed (a late registration leaks the
+            // projection and keeps the FGS notification alive).
+            val callback = object : MediaProjection.Callback() {
+                override fun onStop() {
+                    Log.w(TAG, "MediaProjection revoked by the user")
+                    stop()
+                }
+            }
+            projectionCb = callback
+            capturer = ScreenCapturerAndroid(data, callback)
             videoSource = factory!!.createVideoSource(capturer!!.isScreencast)
             surfaceHelper = SurfaceTextureHelper.create("CaptureThread", org.webrtc.EglBase.create().eglBaseContext)
             capturer!!.initialize(surfaceHelper, context, videoSource!!.capturerObserver)
