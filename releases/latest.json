@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "0.1.7",
-  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.7-release.apk",
-  "notes": "QR-first pairing: scan the web QR once \u2014 relay URL and token live in private storage, no manual entry, no test button. Sticky two-way presence: the app heartbeats while open (roster shows your phone), the web beacon tells the phone the viewer is watching, and live sessions verify the link with a real ping/pong round-trip. Unpair by long-pressing the paired name; re-pair with a fresh QR."
+  "versionCode": 9,
+  "versionName": "0.1.8",
+  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.8-release.apk",
+  "notes": "Critical connectivity fix: pairing URLs now point directly at the CRM API \u2014 a relay middleman was blocking the app's requests (HTTP 400/403). Old pairings self-repair on open. Status line now tells the truth: 'Phone online', 'Web viewer is OPEN', last check-in time; failures show the server's own message instead of a bare code."
 }
