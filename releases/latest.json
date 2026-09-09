@@ -1,6 +1,6 @@
 {
-  "versionCode": 6,
-  "versionName": "0.1.5",
-  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.5-release.apk",
-  "notes": "WebRTC screen streaming: peer-to-peer H.264 to the CRM viewer with direct tap/swipe input over a DataChannel \u2014 no relay server, sub-second latency."
+  "versionCode": 7,
+  "versionName": "0.1.6",
+  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.6-release.apk",
+  "notes": "Fix release: P2P streaming now runs inside the mediaProjection foreground service (Android 14 compliant), connection test speaks HTTP for CRM pairings (no more HTTP 101 probe errors), in-app update shows the system confirm dialog and preserves all settings, faster/robust session negotiation."
 }
