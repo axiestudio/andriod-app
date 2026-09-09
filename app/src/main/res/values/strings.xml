@@ -107,7 +107,7 @@
     <string name="updates_failed">Check failed — retry on a network.</string>
     <string name="updates_need_sources">Allow Install unknown apps for Axie Remote, then retry.</string>
 
-    <string name="footer_version">v0.1.3 · com.axie.remote · side-loaded build</string>
+    <string name="footer_version">v0.1.4 · com.axie.remote · side-loaded build</string>
 
     <string name="notif_rationale_title">Allow notifications?</string>
     <string name="notif_rationale_message">Android shows screen sharing through a persistent notification. Without it, sharing still works but you will not see the indicator. You can change this later in App info.</string>
