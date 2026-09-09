@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
+import android.util.Log
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -27,6 +28,7 @@ import androidx.lifecycle.lifecycleScope
 import com.axie.remote.capture.ScreenCaptureService
 import com.axie.remote.control.ControlAccessibilityService
 import com.axie.remote.net.SignalingClient
+import com.axie.remote.net.WebRtcClient
 import com.axie.remote.pairing.PairingPrefs
 import com.axie.remote.scan.ScanActivity
 import com.axie.remote.update.UpdateManager
@@ -66,6 +68,14 @@ class MainActivity : AppCompatActivity() {
     /** Guards switch listeners while we reflect system truth (no event loops). */
     private var suppressSwitchEvents = false
 
+    /**
+     * WebRTC transport (SPEC.md §5.4): when the pairing URL points at the CRM
+     * signaling API (`…/rest/mobile`), Start Sharing runs the P2P client
+     * instead of the MJPEG relay service. Input commands arrive on the
+     * "control" DataChannel and are forwarded to the accessibility service.
+     */
+    private var webRtcClient: WebRtcClient? = null
+
     private var pendingUpdate: UpdateManager.UpdateInfo? = null
     private var autoChecked = false
 
@@ -73,8 +83,13 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK && result.data != null) {
                 savePairing()
-                startCaptureService(result.resultCode, result.data!!)
-                setSharingState(SharingState.SHARING)
+                if (usesCrmSignaling()) {
+                    startWebRtcSession(result.resultCode, result.data!!)
+                    setSharingState(SharingState.SHARING)
+                } else {
+                    startCaptureService(result.resultCode, result.data!!)
+                    setSharingState(SharingState.SHARING)
+                }
             } else {
                 setSharingState(SharingState.DENIED)
             }
@@ -424,6 +439,65 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * True when the pairing URL is the CRM signaling base (WebRTC transport).
+     * The QR scanner persists the URL in ws(s) spelling (normalizeUrl), while
+     * manual entry may keep https — both spellings are accepted.
+     */
+    private fun usesCrmSignaling(): Boolean = crmSignalBase() != null
+
+    /** The signaling base as an https:// URL, or null when not a CRM pairing. */
+    private fun crmSignalBase(): String? {
+        val raw = currentUrl().trim().trimEnd('/')
+        val https = when {
+            raw.startsWith("https://") -> raw
+            raw.startsWith("http://") -> raw
+            raw.startsWith("wss://") -> "https://" + raw.removePrefix("wss://")
+            raw.startsWith("ws://") -> "http://" + raw.removePrefix("ws://")
+            else -> return null
+        }
+        return if (https.endsWith("/rest/mobile")) https else null
+    }
+
+    /**
+     * P2P session: capture consent is already granted, so hand the projection
+     * intent straight to [WebRtcClient] — it answers the browser's offer from
+     * the signaling mailbox and streams the screen. Input from the viewer's
+     * DataChannel lands in the same accessibility service the relay used.
+     */
+    private fun startWebRtcSession(resultCode: Int, data: Intent) {
+        val signalBase = crmSignalBase() ?: return
+        val token = deviceTokenInput.text?.toString().orEmpty()
+        val client = WebRtcClient(
+            context = applicationContext,
+            signalBase = signalBase,
+            rawToken = token,
+            onInput = { command ->
+                val handled = ControlAccessibilityService.handleRemoteCommand(command)
+                if (!handled) Log.w(TAG, "unhandled control command: $command")
+            },
+            onState = { state ->
+                runOnUiThread {
+                    sessionDetailText.text = "WebRTC: $state"
+                    refreshAll()
+                }
+            },
+            onError = { message ->
+                runOnUiThread {
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    setSharingState(SharingState.IDLE)
+                    webRtcClient = null
+                }
+            },
+        )
+        webRtcClient = client
+        setSharingState(SharingState.STARTING)
+        client.register { name ->
+            Log.i(TAG, "registered with CRM as \"$name\"")
+        }
+        client.onCaptureGranted(resultCode, data)
+    }
+
     // ---- QR pairing ---------------------------------------------------------
 
     /**
@@ -562,6 +636,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopSharing() {
+        webRtcClient?.let { client ->
+            client.stop()
+            webRtcClient = null
+        }
         startService(
             Intent(this, ScreenCaptureService::class.java).apply {
                 action = ScreenCaptureService.ACTION_STOP
@@ -722,6 +800,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val TAG = "AxieRemoteMain"
         private const val KEY_SETUP_SEEN = "setup_seen"
     }
 }
