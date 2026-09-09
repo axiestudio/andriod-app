@@ -4,11 +4,7 @@
     <string name="app_tagline">Screen stream + remote control</string>
 
     <string name="section_connection">Connection</string>
-    <string name="tip_connection">Relay server and pairing token. The URL is validated in-app — use Test connection before sharing.</string>
-    <string name="server_url_label">Relay server URL</string>
-    <string name="server_url_hint">wss://relay.example.com/device</string>
-    <string name="device_token_label">Device token</string>
-    <string name="device_token_hint">Pairing token from the CRM</string>
+    <string name="tip_connection">Pairing lives entirely in the QR you scan — the relay address and token are stored privately in this phone and are never shown or typed.</string>
 
     <string name="section_sharing">Screen sharing</string>
     <string name="tip_sharing">Streams this phone screen. Android shows a system dialog every time — sharing can never start silently.</string>
@@ -60,25 +56,34 @@
     <string name="pose_on">pose on</string>
     <string name="pose_off">pose off</string>
 
-    <string name="conn_idle">No connection tested yet.</string>
-    <string name="conn_testing">Testing…</string>
-    <string name="conn_ok">Reachable: %1$s</string>
-    <string name="conn_failed">Unreachable: %1$s</string>
-    <string name="conn_unknown_token">Paired, but the token is no longer valid — scan the QR again.</string>
-    <string name="conn_invalid">Invalid URL — use ws(s)://host[:port][/path]. Sharing works offline without it.</string>
+    <string name="pair_prompt">Scan the pairing QR shown on the web viewer (CRM → Mobile → Pair new phone). The relay address and secret token are stored inside this app — nothing to type, nothing on screen.</string>
+    <string name="scan_pair">Scan pairing QR</string>
+    <string name="pair_status">Paired: %1$s</string>
+    <string name="pair_status_unknown">Paired</string>
+    <string name="pair_idle">Appears in the web roster once you start sharing. Video is peer-to-peer — the server only brokers the handshake.</string>
+    <string name="pair_verified">Pairing verified — the server accepted this phone. Start sharing, then press Connect on the web.</string>
+    <string name="pair_probe_fail">Reachability check failed: %1$s</string>
+    <string name="pair_first_title">Not paired yet</string>
+    <string name="pair_first_message">Scan the pairing QR from the web viewer first — sharing needs a paired server.</string>
+    <string name="pair_forget_title">Unpair this phone?</string>
+    <string name="pair_forget_message">The stored token is removed. You will need to scan a fresh QR to pair again.</string>
+    <string name="pair_forget_yes">Unpair</string>
+    <string name="pair_unpaired">Unpaired. Scan the QR on the web viewer to pair again.</string>
+    <string name="action_forget">Unpair</string>
+    <string name="pair_probing">Verifying pairing…</string>
     <string name="test_connection">Test connection</string>
-    <string name="scan_qr">Scan QR</string>
+    <string name="scan_qr">Scan pairing QR</string>
     <string name="scan_title">Scan pairing code</string>
-    <string name="scan_hint">Point at the QR shown on the web viewer — the relay URL and token fill in by themselves.</string>
-    <string name="scan_invalid">That code is not a pairing QR — try the one on the viewer page.</string>
-    <string name="scan_denied">Camera access denied — the scanner needs it to read the code. You can still type the pair by hand.</string>
-    <string name="scan_applied">Paired from QR — review and start sharing.</string>
+    <string name="scan_hint">Point the camera at the pairing QR on the web viewer page.</string>
+    <string name="scan_invalid">That code is not a pairing QR — use the one on the viewer page.</string>
+    <string name="scan_denied">Camera access denied — the scanner needs it to read the pairing QR.</string>
+    <string name="scan_applied">Paired with %1$s — start sharing, then press Connect on the web.</string>
     <string name="scan_camera_title">Allow camera access?</string>
     <string name="scan_camera_message">The camera is only used to read the pairing QR from your viewer page. Nothing is recorded or sent anywhere.</string>
     <string name="torch_label">Torch</string>
     <string name="action_cancel">Cancel</string>
-    <string name="url_required_title">Relay URL missing</string>
-    <string name="url_required_message">Sharing starts without a relay (offline preview). To control this phone from the web, enter the relay URL first — or continue offline?</string>
+    <string name="url_required_title">Not paired yet</string>
+    <string name="url_required_message">Remote control needs a paired server. Scan the pairing QR shown on the web viewer (CRM → Mobile → Pair new phone) first.</string>
     <string name="action_continue_offline">Continue offline</string>
 
     <string name="setup_title">Set up remote control</string>

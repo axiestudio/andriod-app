@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Carbon Gray 10 layout: square tiles, 16dp grid, Plex type, Blue 60 actions. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -151,78 +152,95 @@
                         android:tooltipText="@string/tip_connection" />
                 </LinearLayout>
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/serverUrlLayout"
+                <!-- Paired: the QR's secret never renders — name + reach state only. -->
+                <LinearLayout
+                    android:id="@+id/pairedBlock"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:hint="@string/server_url_label"
-                    app:boxCornerRadiusTopStart="0dp"
-                    app:boxCornerRadiusTopEnd="0dp"
-                    app:boxCornerRadiusBottomStart="0dp"
-                    app:boxCornerRadiusBottomEnd="0dp">
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/serverUrlInput"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="textUri"
-                        android:singleLine="true" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/deviceTokenLayout"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:hint="@string/device_token_label"
-                    app:boxCornerRadiusTopStart="0dp"
-                    app:boxCornerRadiusTopEnd="0dp"
-                    app:boxCornerRadiusBottomStart="0dp"
-                    app:boxCornerRadiusBottomEnd="0dp">
+                        <TextView
+                            android:id="@+id/pairedNameText"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnSurface"
+                            tools:text="Phone 1" />
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/deviceTokenInput"
+                        <TextView
+                            android:id="@+id/pairedStatusText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:textSize="12sp"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            tools:text="Paired" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/pairedDetailText"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:singleLine="true" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:layout_marginTop="4dp"
+                        android:textSize="12sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        tools:text="Appears in the web roster when you start sharing." />
 
-                <TextView
-                    android:id="@+id/connectionStatusText"
+                    <TextView
+                        android:id="@+id/connectionStatusText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textSize="13sp"
+                        android:textColor="?attr/colorError"
+                        android:visibility="gone"
+                        tools:text="Token no longer valid — scan the QR again."
+                        tools:visibility="visible" />
+                </LinearLayout>
+
+                <!-- Unpaired: the QR is the only way in. -->
+                <LinearLayout
+                    android:id="@+id/unpairedBlock"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/conn_idle"
-                    android:textSize="13sp"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:orientation="vertical"
+                    tools:visibility="gone">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/testConnectionButton"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:minHeight="48dp"
-                    android:text="@string/test_connection"
-                    android:textAllCaps="false"
-                    app:cornerRadius="0dp" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/pair_prompt"
+                        android:textSize="13sp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/scanButton"
-                    app:icon="@drawable/ic_carbon_qr"
-                    app:iconTint="?attr/colorPrimary"
-                    app:iconSize="20dp"
-                    app:iconPadding="8dp"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:minHeight="48dp"
-                    android:text="@string/scan_qr"
-                    android:textAllCaps="false"
-                    app:cornerRadius="0dp" />
-            </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/scanButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:minHeight="48dp"
+                        android:text="@string/scan_pair"
+                        android:textAllCaps="false"
+                        app:cornerRadius="0dp"
+                        app:icon="@drawable/ic_carbon_qr"
+                        app:iconGravity="textStart"
+                        app:iconPadding="8dp"
+                        app:iconSize="20dp" />
+                </LinearLayout></LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Sharing tile -->

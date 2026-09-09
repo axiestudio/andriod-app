@@ -16,10 +16,12 @@ import com.journeyapps.barcodescanner.CompoundBarcodeView
  * QR pairing scanner (Carbon Gray 10, same tiles as MainActivity).
  *
  * Continuous scan; the first decodable `axie-remote://pair` code is persisted
- * via [PairingPrefs] and finishes with RESULT_OK so MainActivity can reflect
- * the new pair. Anything else toasts and keeps scanning — a stray barcode
- * never overwrites pairing. Camera lifecycle is pause/resume bound; MainActivity
- * guarantees CAMERA permission before launching.
+ * via [PairingPrefs] and finishes with RESULT_OK so MainActivity can verify
+ * the pair and go straight to ready-to-share. The stored secret has no UI —
+ * re-pairing with a fresh QR is the only way to change it. Anything else
+ * toasts and keeps scanning — a stray barcode never overwrites pairing.
+ * Camera lifecycle is pause/resume bound; MainActivity guarantees CAMERA
+ * permission before launching.
  */
 class ScanActivity : AppCompatActivity() {
 
@@ -49,7 +51,7 @@ class ScanActivity : AppCompatActivity() {
                 val label = pairing.name.ifBlank { getString(R.string.app_name) }
                 Toast.makeText(
                     this@ScanActivity,
-                    getString(R.string.scan_applied) + " ($label)",
+                    getString(R.string.scan_applied, label),
                     Toast.LENGTH_LONG,
                 ).show()
                 setResult(Activity.RESULT_OK)

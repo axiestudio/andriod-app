@@ -13,8 +13,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -26,17 +24,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.axie.remote.capture.ScreenCaptureService
 import com.axie.remote.control.ControlAccessibilityService
-import com.axie.remote.net.SignalingClient
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
+import com.axie.remote.net.PresenceEmitter
+import com.axie.remote.pairing.Pairing
 import com.axie.remote.pairing.PairingPrefs
 import com.axie.remote.scan.ScanActivity
 import com.axie.remote.update.UpdateManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
-import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
 
 /** Host screen: permission toggles, pairing + URL validation, session lifecycle, self-update. */
@@ -52,9 +46,25 @@ class MainActivity : AppCompatActivity() {
     private lateinit var controlStateText: TextView
     private lateinit var guidanceStrip: View
     private lateinit var stepRestrictedBlock: View
-    private lateinit var serverUrlLayout: TextInputLayout
-    private lateinit var serverUrlInput: TextInputEditText
-    private lateinit var deviceTokenInput: TextInputEditText
+    /**
+     * Keeps the paired device visible in the web roster while the app is
+     * open: re-runs the pairing probe every 40 s (the roster marks a device
+     * online for 45 s after each register). Lifecycle-bound in onResume/onPause.
+     */
+    private val presence = PresenceEmitter(
+        signalBase = { PairingPrefs.crmSignalBase(applicationContext) },
+        token = { PairingPrefs.load(applicationContext)?.token.orEmpty() },
+        onResult = { name ->
+            // Presence is server-side; refresh the visible state only.
+            if (name != null) loadPairing()
+        },
+    )
+
+    private lateinit var pairedBlock: View
+    private lateinit var unpairedBlock: View
+    private lateinit var pairedNameText: TextView
+    private lateinit var pairedStatusText: TextView
+    private lateinit var pairedDetailText: TextView
     private lateinit var connectionStatusText: TextView
     private lateinit var versionText: TextView
     private lateinit var updateStateText: TextView
@@ -75,7 +85,6 @@ class MainActivity : AppCompatActivity() {
     private val projectionConsent =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-                savePairing()
                 if (usesCrmSignaling()) {
                     startWebRtcSession(result.resultCode, result.data!!)
                     setSharingState(SharingState.SHARING)
@@ -112,15 +121,14 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * QR scan result: ScanActivity already persisted the pair via PairingPrefs;
-     * reflect it into the form so the user reviews before sharing.
+     * reload from storage and verify reachability immediately — pairing and
+     * proof happen in one step, nothing for the user to re-check.
      */
     private val scanLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
-                serverUrlInput.setText(prefs.getString(PairingPrefs.KEY_URL, ""))
-                deviceTokenInput.setText(prefs.getString(PairingPrefs.KEY_TOKEN, ""))
-                serverUrlLayout.error = null
-                connectionStatusText.setText(R.string.scan_applied)
+                loadPairing()
+                verifyPairing(showSpinner = true)
             }
             refreshAll()
         }
@@ -137,9 +145,11 @@ class MainActivity : AppCompatActivity() {
         controlStateText = findViewById(R.id.controlStateText)
         guidanceStrip = findViewById(R.id.guidanceStrip)
         stepRestrictedBlock = findViewById(R.id.stepRestrictedBlock)
-        serverUrlLayout = findViewById(R.id.serverUrlLayout)
-        serverUrlInput = findViewById(R.id.serverUrlInput)
-        deviceTokenInput = findViewById(R.id.deviceTokenInput)
+        pairedBlock = findViewById(R.id.pairedBlock)
+        unpairedBlock = findViewById(R.id.unpairedBlock)
+        pairedNameText = findViewById(R.id.pairedNameText)
+        pairedStatusText = findViewById(R.id.pairedStatusText)
+        pairedDetailText = findViewById(R.id.pairedDetailText)
         connectionStatusText = findViewById(R.id.connectionStatusText)
         versionText = findViewById(R.id.versionText)
         updateStateText = findViewById(R.id.updateStateText)
@@ -151,8 +161,7 @@ class MainActivity : AppCompatActivity() {
         sessionStateText = findViewById(R.id.sessionStateText)
         sessionDetailText = findViewById(R.id.sessionDetailText)
 
-        serverUrlInput.setText(prefs.getString(PairingPrefs.KEY_URL, ""))
-        deviceTokenInput.setText(prefs.getString(PairingPrefs.KEY_TOKEN, ""))
+        loadPairing()
         versionText.text = getString(
             R.string.current_version, UpdateManager.currentVersion(this).second
         )
@@ -175,15 +184,12 @@ class MainActivity : AppCompatActivity() {
             onUnknownSourcesToggle(checked)
         }
 
-        serverUrlInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {
-                serverUrlLayout.error = null
-            }
-            override fun afterTextChanged(s: Editable?) { refreshSession() }
-        })
-
-        findViewById<Button>(R.id.testConnectionButton).setOnClickListener { testConnection() }
+        // Long-press the paired name for the escape hatch: unpair (re-pairing
+        // is always a fresh QR — there is no manual URL/token editing).
+        pairedNameText.setOnLongClickListener {
+            confirmUnpair()
+            true
+        }
         findViewById<Button>(R.id.scanButton).setOnClickListener { onScanQr() }
         findViewById<Button>(R.id.startButton).setOnClickListener { requestSharing() }
         findViewById<Button>(R.id.stopButton).setOnClickListener { stopSharing() }
@@ -232,6 +238,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         refreshAll()
         statsHandler.post(statsTick)
+        presence.start()
         if (!autoChecked) {
             autoChecked = true
             runUpdateCheck(manual = false)
@@ -241,6 +248,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         statsHandler.removeCallbacks(statsTick)
+        presence.stop()
     }
 
     /** 1 Hz session telemetry (frames uploaded, watchers, pose) while visible. */
@@ -364,7 +372,7 @@ class MainActivity : AppCompatActivity() {
      * Unavailable → Available → Active → Screen sharing → Remote interaction.
      */
     private fun refreshSession() {
-        val urlOk = SignalingClient.normalizeUrl(serverUrlInput.text?.toString()) != null
+        val paired = pairing != null
         val controlOn = ControlAccessibilityService.isEnabled(this)
         val sharingOn = ScreenCaptureService.isRunning
         val relay = ScreenCaptureService.relayState
@@ -372,8 +380,8 @@ class MainActivity : AppCompatActivity() {
         val stateRes = when {
             sharingOn && controlOn && relay == "live" -> R.string.session_interactive
             sharingOn -> R.string.session_sharing
-            urlOk && controlOn -> R.string.session_active
-            urlOk || controlOn -> R.string.session_available
+            paired && controlOn -> R.string.session_active
+            paired || controlOn -> R.string.session_available
             else -> R.string.session_unavailable
         }
         sessionStateText.setText(stateRes)
@@ -381,126 +389,93 @@ class MainActivity : AppCompatActivity() {
         val control = if (controlOn) "on" else "off"
         sessionDetailText.text =
             "Screen: $screen · Control: $control · Relay: $relay" +
-                if (!urlOk && !sharingOn) " — set a relay URL, enable control, then start sharing."
+                if (!paired && !sharingOn) " — scan the pairing QR, enable control, then start sharing."
                 else if (!controlOn) " — enable control for remote taps."
                 else if (!sharingOn) " — start sharing to go live."
                 else ""
         sharingDetailText.text = "Screen: $screen · Control: $control · Relay: $relay"
     }
 
-    // ---- URL validation + connection test ("URL accessibility") --------------
+    // ---- pairing state (QR-first: storage is the single source of truth) -----
 
-    private fun currentUrl(): String = serverUrlInput.text?.toString().orEmpty()
+    private var pairing: Pairing? = null
 
-    /** Null = valid-but-empty (offline preview allowed); non-null = normalized URL. */
-    private fun validatedUrl(): String? {
-        val raw = currentUrl()
-        if (raw.isBlank()) return null
-        val normalized = SignalingClient.normalizeUrl(raw)
-        if (normalized == null) {
-            serverUrlLayout.error = getString(R.string.conn_invalid)
-        } else {
-            serverUrlLayout.error = null
-        }
-        return normalized
-    }
-
-    private fun testConnection() {
-        savePairing()
-        val raw = currentUrl()
-        if (raw.isBlank()) {
-            serverUrlLayout.error = getString(R.string.conn_invalid)
-            connectionStatusText.setText(R.string.conn_invalid)
-            return
-        }
-        val normalized = SignalingClient.normalizeUrl(raw)
-        if (normalized == null) {
-            serverUrlLayout.error = getString(R.string.conn_invalid)
-            connectionStatusText.setText(R.string.conn_invalid)
-            return
-        }
-        serverUrlLayout.error = null
-        connectionStatusText.setText(R.string.conn_testing)
-        val token = deviceTokenInput.text?.toString().orEmpty()
-        val signalBase = crmSignalBase()
-        if (signalBase != null) {
-            // CRM signaling (WebRTC): probe the device register endpoint with
-            // the pairing token — HTTP semantics, not WebSocket semantics.
-            testCrmSignalBase(signalBase, token)
-            return
-        }
-        SignalingClient.testConnection(normalized, token) { ok, message ->
-            runOnUiThread {
-                connectionStatusText.text = getString(
-                    if (ok) R.string.conn_ok else R.string.conn_failed, message
-                )
-                refreshSession()
-            }
-        }
+    private fun loadPairing() {
+        pairing = PairingPrefs.load(this)
+        renderPairing()
     }
 
     /**
-     * HTTP probe for CRM pairings: POST /device/register with the stored
-     * token. 200 = token valid (shows the paired name), 404 = unknown token,
-     * 401/403 = malformed. Never speaks WebSocket — the old ws:// probe
-     * reported "expected HTTP 101 but was 404" against the REST API.
+     * Passive reachability check on a worker thread — the exact request the
+     * sharing path performs. The result updates the paired card (verified /
+     * unreachable / token-revoked); there is no button to press.
      */
-    private fun testCrmSignalBase(signalBase: String, token: String) {
+    private fun verifyPairing(showSpinner: Boolean = false) {
+        val current = pairing ?: return
+        if (showSpinner) {
+            pairedStatusText.text = getString(R.string.pair_probing)
+        }
         Thread({
-            var ok = false
-            var message: String
-            try {
-                val body = JSONObject().apply {
-                    put("token", token)
-                    put("deviceId", "probe")
-                }.toString()
-                val request = okhttp3.Request.Builder()
-                    .url("$signalBase/device/register")
-                    .post(body.toRequestBody("application/json".toMediaType()))
-                    .build()
-                okhttp3.OkHttpClient().newCall(request).execute().use { response ->
-                    val text = response.body?.string().orEmpty()
-                    val json = runCatching { JSONObject(text) }.getOrNull()
-                    when {
-                        response.isSuccessful && json?.optBoolean("ok") == true -> {
-                            ok = true
-                            message = getString(R.string.conn_ok, json.optString("name"))
-                        }
-                        response.code == 404 ->
-                            message = getString(R.string.conn_unknown_token)
-                        else ->
-                            message = getString(R.string.conn_failed, "HTTP ${response.code}")
-                    }
-                }
-            } catch (e: Exception) {
-                message = getString(R.string.conn_failed, e.message ?: "network error")
-            }
+            val probed = PairingPrefs.probe(this, current)
+            PairingPrefs.save(this, probed)
             runOnUiThread {
-                connectionStatusText.text = message
-                refreshSession()
+                if (pairing?.token == current.token) {
+                    pairing = probed
+                    renderPairing()
+                    refreshAll()
+                }
             }
-        }, "AxieCrmProbe").start()
+        }, "AxiePairProbe").start()
+    }
+
+    private fun renderPairing() {
+        val p = pairing
+        pairedBlock.visibility = if (p == null) View.GONE else View.VISIBLE
+        unpairedBlock.visibility = if (p == null) View.VISIBLE else View.GONE
+        if (p == null) return
+        pairedNameText.text =
+            p.name.ifBlank { getString(R.string.pair_status_unknown) }
+        pairedStatusText.text = when {
+            p.reachable -> getString(R.string.pair_verified)
+            p.error != null -> getString(R.string.pair_probe_fail, p.error)
+            else -> getString(R.string.pair_status_unknown)
+        }
+        pairedStatusText.setTextColor(
+            ContextCompat.getColor(
+                this,
+                if (p.reachable) R.color.carbon_green else R.color.carbon_gray_idle,
+            ),
+        )
+        pairedDetailText.setText(R.string.pair_idle)
+        connectionStatusText.visibility =
+            if (p.error != null && !p.reachable) View.VISIBLE else View.GONE
+        connectionStatusText.text =
+            if (p.error != null && !p.reachable) {
+                getString(R.string.pair_probe_fail, p.error)
+            } else {
+                ""
+            }
+    }
+
+    private fun confirmUnpair() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.pair_forget_title)
+            .setMessage(R.string.pair_forget_message)
+            .setPositiveButton(R.string.pair_forget_yes) { _, _ ->
+                PairingPrefs.clear(this)
+                loadPairing()
+                refreshAll()
+                Toast.makeText(this, R.string.pair_unpaired, Toast.LENGTH_LONG).show()
+            }
+            .setNegativeButton(R.string.action_cancel, null)
+            .show()
     }
 
     /**
-     * True when the pairing URL is the CRM signaling base (WebRTC transport).
-     * The QR scanner persists the URL in ws(s) spelling (normalizeUrl), while
-     * manual entry may keep https — both spellings are accepted.
+     * True when the stored pairing targets the CRM signaling base (WebRTC
+     * transport). All manual-URL spellings are gone — the QR decided.
      */
-    private fun usesCrmSignaling(): Boolean = crmSignalBase() != null
-
-    /** The signaling base as an https:// URL, or null when not a CRM pairing. */
-    private fun crmSignalBase(): String? {
-        val raw = currentUrl().trim().trimEnd('/')
-        val https = when {
-            raw.startsWith("https://") -> raw
-            raw.startsWith("http://") -> raw
-            raw.startsWith("wss://") -> "https://" + raw.removePrefix("wss://")
-            raw.startsWith("ws://") -> "http://" + raw.removePrefix("ws://")
-            else -> return null
-        }
-        return if (https.endsWith("/rest/mobile")) https else null
-    }
+    private fun usesCrmSignaling(): Boolean = PairingPrefs.crmSignalBase(this) != null
 
     /**
      * P2P session: capture consent is already granted, so hand the projection
@@ -516,13 +491,14 @@ class MainActivity : AppCompatActivity() {
      * the transport lives inside the FGS instead of the activity.
      */
     private fun startWebRtcSession(resultCode: Int, data: Intent) {
-        val signalBase = crmSignalBase() ?: return
+        val signalBase = PairingPrefs.crmSignalBase(this) ?: return
+        val token = pairing?.token ?: return
         val start = Intent(this, ScreenCaptureService::class.java).apply {
             action = ScreenCaptureService.ACTION_START
             putExtra(ScreenCaptureService.EXTRA_RESULT_CODE, resultCode)
             putExtra(ScreenCaptureService.EXTRA_RESULT_DATA, data)
             putExtra(ScreenCaptureService.EXTRA_SERVER_URL, signalBase)
-            putExtra(ScreenCaptureService.EXTRA_DEVICE_TOKEN, deviceTokenInput.text?.toString().orEmpty())
+            putExtra(ScreenCaptureService.EXTRA_DEVICE_TOKEN, token)
             putExtra(ScreenCaptureService.EXTRA_MODE, ScreenCaptureService.MODE_WEBRTC)
         }
         ContextCompat.startForegroundService(this, start)
@@ -572,34 +548,26 @@ class MainActivity : AppCompatActivity() {
      * to the capture consent — notifications are not required for sharing.
      */
     private fun requestSharing() {
-        val raw = currentUrl()
-        if (raw.isNotBlank() && SignalingClient.normalizeUrl(raw) == null) {
-            serverUrlLayout.error = getString(R.string.conn_invalid)
-            Toast.makeText(this, R.string.conn_invalid, Toast.LENGTH_LONG).show()
-            refreshAll()
+        if (usesCrmSignaling()) {
+            requestNotifThenConsent()
             return
         }
-        serverUrlLayout.error = null
-        if (raw.isBlank()) {
-            // Offline preview is legitimate — but confirm, since remote control
-            // needs the relay (goal.md §§2–3 run on one session).
-            MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.url_required_title)
-                .setMessage(R.string.url_required_message)
-                .setPositiveButton(R.string.action_continue_offline) { _, _ ->
-                    requestNotifThenConsent()
-                }
-                .setNegativeButton(R.string.action_not_now, null)
-                .show()
-            refreshAll()
-            return
-        }
-        requestNotifThenConsent()
+        // Not paired (or the stored pairing is not a CRM QR) — the QR is the
+        // only way in, so the scanner IS the fix. Offline preview exists in
+        // the legacy flow only; remote control always pairs first.
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.url_required_title)
+            .setMessage(R.string.url_required_message)
+            .setPositiveButton(R.string.scan_pair) { _, _ ->
+                onScanQr()
+            }
+            .setNegativeButton(R.string.action_not_now, null)
+            .show()
+        refreshAll()
     }
 
     private fun requestNotifThenConsent() {
         if (Build.VERSION.SDK_INT < 33 || hasNotificationPermission()) {
-            savePairing()
             launchProjectionConsent()
             return
         }
@@ -614,7 +582,6 @@ class MainActivity : AppCompatActivity() {
                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 .setNegativeButton(R.string.action_not_now) { _, _ ->
-                    savePairing()
                     launchProjectionConsent()
                 }
                 .show()
@@ -648,7 +615,6 @@ class MainActivity : AppCompatActivity() {
         ) == PackageManager.PERMISSION_GRANTED
 
     private fun launchProjectionConsent() {
-        savePairing()
         setSharingState(SharingState.STARTING)
         val manager = getSystemService(MediaProjectionManager::class.java)
         projectionConsent.launch(manager.createScreenCaptureIntent())
@@ -659,8 +625,8 @@ class MainActivity : AppCompatActivity() {
             action = ScreenCaptureService.ACTION_START
             putExtra(ScreenCaptureService.EXTRA_RESULT_CODE, resultCode)
             putExtra(ScreenCaptureService.EXTRA_RESULT_DATA, resultData)
-            putExtra(ScreenCaptureService.EXTRA_SERVER_URL, currentUrl())
-            putExtra(ScreenCaptureService.EXTRA_DEVICE_TOKEN, deviceTokenInput.text?.toString().orEmpty())
+            putExtra(ScreenCaptureService.EXTRA_SERVER_URL, pairing?.serverUrl.orEmpty())
+            putExtra(ScreenCaptureService.EXTRA_DEVICE_TOKEN, pairing?.token.orEmpty())
         }
         ContextCompat.startForegroundService(this, start)
     }
@@ -804,13 +770,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun savePairing() {
-        prefs.edit()
-            .putString(PairingPrefs.KEY_URL, serverUrlInput.text?.toString().orEmpty())
-            .putString(PairingPrefs.KEY_TOKEN, deviceTokenInput.text?.toString().orEmpty())
-            .apply()
     }
 
     private fun setSharingState(state: SharingState) {
