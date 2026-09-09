@@ -1,6 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "0.1.6",
-  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.6-release.apk",
-  "notes": "Fix release: P2P streaming now runs inside the mediaProjection foreground service (Android 14 compliant), connection test speaks HTTP for CRM pairings (no more HTTP 101 probe errors), in-app update shows the system confirm dialog and preserves all settings, faster/robust session negotiation."
+  "versionCode": 8,
+  "versionName": "0.1.7",
+  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.7-release.apk",
+  "notes": "QR-first pairing: scan the web QR once \u2014 relay URL and token live in private storage, no manual entry, no test button. Sticky two-way presence: the app heartbeats while open (roster shows your phone), the web beacon tells the phone the viewer is watching, and live sessions verify the link with a real ping/pong round-trip. Unpair by long-pressing the paired name; re-pair with a fresh QR."
 }
