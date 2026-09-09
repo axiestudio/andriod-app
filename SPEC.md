@@ -311,3 +311,35 @@ Root `.env` holds `CONTEXT7_API_KEY`. Researched libraries for this spec:
 Refresh with `scripts/fetch-context7-docs.sh` (writes to `/tmp`, never commits the key).
 REST shape: `GET https://context7.com/api/v2/context?libraryId=<id>&query=<q>&tokens=<n>`
 with `Authorization: Bearer $CONTEXT7_API_KEY` (resolve ids via `GET /api/v1/search?query=`).
+
+### 5.4 WebRTC transport (v2 — Phase 3, shipped)
+
+The MJPEG/WS relay above remains the LAN fallback. Production now uses
+**WebRTC peer-to-peer** with **DB-mailbox signaling** — zero extra infra:
+
+```
+phone APK                                CRM API (Vercel)                 browser viewer
+─────────                                ────────────────                 ──────────────
+register(token) ───────────────────────▶ mobileDevice.tokenHash ✓
+poll(wait 8s) ─────────────────────────▶ MobileSignal rows ◀──── POST mobile.post(kind=offer, SDP)
+answer(SDP) ───────────────────────────▶ MobileSignal rows ────▶ poll → setRemoteDescription
+ICE trickle (kind=ice, both ways)  … same mailbox, rows deleted on delivery …
+███████████ WebRTC: H.264 video + RTCDataChannel input — P2P, DTLS-SRTP ███████████
+```
+
+- **Why not a WS relay / Durable Objects:** a relay would burn Vercel function
+  hours forever and DOs add cost; the mailbox is a few tiny Postgres rows per
+  session that self-clean in 30 s. signaling volume: ~10 rows/session.
+- **DB**: `mobileDevice` (sha256(tokenHash), ownerId, presence) +
+  `mobileSignal` (kind, payload JSONB, expiresAt) — see
+  `packages/db/prisma/migrations/20260909040000_mobile_device_signaling`.
+- **Auth**: APK presents the raw pairing token (device routes, `protect:false`);
+  viewer routes sit behind the CRM session. Device↔user binding is enforced.
+- **Code**: APK `net/WebRtcClient.kt` (ScreenCapturerAndroid → H.264,
+  DataChannel "control" reuses the §5 input protocol verbatim); viewer
+  `apps/web/app/(app)/[slug]/mobile/webrtc-viewer.ts` + `use-cloud-devices.ts`.
+- **NAT**: Google STUN by default; set `TURN_URL/TURN_USERNAME/TURN_PASSWORD`
+  on the API env for restrictive networks (server surfaces it via
+  `mobile.ice`, `turnConfigured` flag).
+- **Input**: identical `{tap|swipe|key|text…}` JSON over the DataChannel —
+  `ControlAccessibilityService` is transport-agnostic.

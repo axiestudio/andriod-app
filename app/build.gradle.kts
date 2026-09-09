@@ -66,6 +66,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     // Networking for Phase 1+ (WebSocket signaling + MJPEG frames, see SPEC.md §5).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Phase 3 (SPEC.md §2/§3): WebRTC screen streaming — prebuilt libwebrtc
+    // with ScreenCapturerAndroid; media is peer-to-peer, signaling rides the
+    // CRM API's DB mailbox (MobileSignal rows), no relay server.
+    implementation("io.getstream:stream-webrtc-android:1.3.8")
     // QR pairing scanner (offline, no Play Services): fills relay URL + token
     // from the web viewer's QR code (see SPEC.md §5.3).
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
