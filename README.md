@@ -11,7 +11,7 @@ Native Android companion app (`com.axie.remote`): streams the phone screen via
 
 Signed release APK, installable on any Android 10+ phone:
 
-[`releases/AxieRemote-v0.1.3-release.apk`](./releases/AxieRemote-v0.1.3-release.apk)
+[`releases/AxieRemote-v0.1.4-release.apk`](./releases/AxieRemote-v0.1.4-release.apk)
 
 On your phone: open that link → download → tap the file → *Install anyway*
 (Play Protect warns on all side-loaded apps). Then follow *Use* below.
