@@ -1,6 +1,6 @@
 {
-  "versionCode": 5,
-  "versionName": "0.1.4",
-  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.4-release.apk",
-  "notes": "QR pairing scanner, rotation-vector pose stream, live session stats, viewer-gated uploads."
+  "versionCode": 6,
+  "versionName": "0.1.5",
+  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.5-release.apk",
+  "notes": "WebRTC screen streaming: peer-to-peer H.264 to the CRM viewer with direct tap/swipe input over a DataChannel \u2014 no relay server, sub-second latency."
 }

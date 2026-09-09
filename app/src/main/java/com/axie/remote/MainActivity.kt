@@ -638,8 +638,8 @@ class MainActivity : AppCompatActivity() {
     private fun stopSharing() {
         webRtcClient?.let { client ->
             client.stop()
-            webRtcClient = null
         }
+        webRtcClient = null
         startService(
             Intent(this, ScreenCaptureService::class.java).apply {
                 action = ScreenCaptureService.ACTION_STOP

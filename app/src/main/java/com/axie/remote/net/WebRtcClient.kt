@@ -2,9 +2,12 @@ package com.axie.remote.net
 
 import android.content.Context
 import android.content.Intent
+import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.util.Log
 import org.json.JSONObject
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.webrtc.DataChannel
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
@@ -26,8 +29,9 @@ import java.util.concurrent.Executors
  * (§5) — [ControlAccessibilityService] never learns the transport changed.
  *
  * Signaling = the CRM API's DB mailbox over plain HTTP polling
- * (`/rest/mobile/device/*`, token-authenticated). No WebSocket relay server,
- * no extra infrastructure: the API only brokers the few-second handshake.
+ * (`/rest/mobile/device/…` paths, token-authenticated). No WebSocket relay
+ * server, no extra infrastructure: the API only brokers the few-second
+ * handshake.
  *
  * Flow (viewer is the offerer — it only receives video):
  *   1. register(token)            → device known to the CRM
@@ -164,7 +168,7 @@ class WebRtcClient(
             // Screen capture → video track.
             capturer = ScreenCapturerAndroid(
                 data,
-                object : org.webrtc.MediaProjection.Callback() {
+                object : MediaProjection.Callback() {
                     override fun onStop() {
                         Log.w(TAG, "MediaProjection revoked by the user")
                         stop()
@@ -342,8 +346,13 @@ class WebRtcClient(
     private fun noopSdpObserver(): SdpObserver = object : SdpObserver {
         override fun onCreateSuccess(description: SessionDescription?) = Unit
         override fun onSetSuccess() = Unit
-        override fun onCreateFailure(error: String?) = Log.w(TAG, "create failed: $error")
-        override fun onSetFailure(error: String?) = Log.w(TAG, "set failed: $error")
+        override fun onCreateFailure(error: String?) {
+            Log.w(TAG, "create failed: $error")
+        }
+
+        override fun onSetFailure(error: String?) {
+            Log.w(TAG, "set failed: $error")
+        }
     }
 
     private fun parseTimestamp(iso: String): Long = runCatching {
@@ -352,17 +361,14 @@ class WebRtcClient(
 
     /** Minimal JSON POST used for signaling. */
     inner class SignalingHttp {
+        private val client = okhttp3.OkHttpClient()
+
         fun postJson(url: String, body: String): JSONObject? {
             val request = okhttp3.Request.Builder()
                 .url(url)
-                .post(
-                    okhttp3.RequestBody.create(
-                        okhttp3.MediaType.parse("application/json"),
-                        body,
-                    ),
-                )
+                .post(body.toRequestBody("application/json".toMediaType()))
                 .build()
-            delegate.newCall(request).execute().use { response ->
+            client.newCall(request).execute().use { response ->
                 val text = response.body?.string() ?: return null
                 if (!response.isSuccessful) {
                     Log.w(TAG, "HTTP ${response.code} from $url")
