@@ -174,6 +174,74 @@ longer duration), multi-stroke `GestureDescription` for pinch/multi-touch (`goal
 Throughput targets v1: 720p, 2–5 fps MJPEG over LAN is acceptable; tune JPEG quality (50–70)
 and `ImageReader.acquireLatestImage()` (drop, never queue) to bound latency < 1 s on LAN.
 
+### 5.1 Viewer extension (v1.1 — backwards compatible)
+
+The web viewer (`apps/console` → `/mobile` page, Carbon UI) joins the same
+room with the **same relay URL + device token** the phone uses:
+
+```jsonc
+// Viewer → relay (joins room for `token`)
+{ "type": "hello", "role": "viewer", "token": "<pairing-token>", "viewerId": "web-…" }
+// Relay → viewer (presence + forwarded stream)
+{ "type": "welcome", "online": true, "deviceId": "pixel-8-01",
+  "screen": { "width": 720, "height": 1600, "dpi": 420 } }
+{ "type": "device", "online": false }   // phone left / not sharing yet
+{ "type": "frame", "codec": "mjpeg", "seq": 123, "ts": 1710000000000, "dataBase64": "<jpeg>" }
+// Viewer → relay (forwarded to the phone as-is): tap/swipe/key/text/
+// longpress/drag/scroll/ping/bye — same shapes as above.
+```
+
+Relay duties (`apps/console/scripts/device-relay.mjs`, one Node process, `ws`
+only): pair by token, fan out frames latest-only (drop for backed-up viewers
+instead of queueing — `bufferedAmount` ceiling), answer `ping` locally, never
+log or persist frames/tokens.
+
+Resource saver: the relay sends the phone `{ "type": "viewers", "count": N }`
+on every viewer join/leave. `ScreenCaptureService` skips JPEG encode + upload
+while `count == 0` (unknown/`null` on old relays → keep sending, so this is
+backwards compatible). Viewer side likewise renders nothing while its tab is
+hidden. Net effect: an idle session costs the phone only its local capture
+loop — no encode, no uplink, no render.
+
+### 5.2 Pose stream (v1.2 — aesthetic device mockup)
+
+While watched, the phone also streams its physical pose so the web
+viewer can lean a 3D device frame with the real hardware (flip it, slant it —
+the mockup follows):
+
+```jsonc
+// Device → relay → viewer (relayed latest-only, like frames)
+{ "type": "orientation", "azimuth": 12.5, "pitch": -73.2, "roll": 4.1,
+  "rotation": 0, "ts": 1710000000000 }
+```
+
+Source: `sensors/OrientationReporter` — `TYPE_ROTATION_VECTOR` (never the
+deprecated `TYPE_ORIENTATION`) → `getRotationMatrixFromVector()` →
+`remapCoordinateSystem()` for the current display rotation →
+`getOrientation()`, per the Android position-sensor guide. Degrees, no
+permission required. Budget: own thread at `SENSOR_DELAY_UI`, ≥ 250 ms apart,
+≥ 1.5° of movement, and samples only leave the phone while `viewers > 0`
+(`null`/unknown relay → keep sending, same policy as frames). Purely
+presentational — input coordinates stay normalized, so control is unaffected.
+
+### 5.3 QR pairing (v1.3)
+
+Typing a LAN URL by hand is the top pairing failure. The web viewer renders
+one QR per phone; the phone scans it instead:
+
+```
+axie-remote://pair?v=1&url=<urlencoded relay URL>&token=<urlencoded token>&name=<label>
+```
+
+- `pairing/PairingPrefs.parsePairUri()` is total: wrong scheme/host/version,
+  unnormalizable URL, or blank token → null, never partial state. Saved keys
+  (`server_url`, `device_token`) are shared with MainActivity — one source.
+- `scan/ScanActivity` (zxing, offline, no Play Services): continuous scan,
+  first valid code persists + `RESULT_OK`; stray barcodes toast and keep
+  scanning. CAMERA permission with the standard educate→ask flow; denial keeps
+  manual pairing. Torch toggle for dark rooms. URL/token normalization is
+  shared with the viewer (scheme case-insensitive on both sides).
+
 ## 6. Streaming phases (ship incrementally)
 
 - **Phase 0 — skeleton (this repo state after scaffold):** consent screen + foreground service +

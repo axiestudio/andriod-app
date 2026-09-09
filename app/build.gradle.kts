@@ -66,4 +66,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     // Networking for Phase 1+ (WebSocket signaling + MJPEG frames, see SPEC.md §5).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // QR pairing scanner (offline, no Play Services): fills relay URL + token
+    // from the web viewer's QR code (see SPEC.md §5.3).
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 }

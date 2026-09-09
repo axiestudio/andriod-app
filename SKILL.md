@@ -60,6 +60,10 @@ On-device checklist (every manual test):
 - `control/ControlAccessibilityService.kt` — `dispatchGesture` taps/swipes, `performGlobalAction`
   keys, `ACTION_SET_TEXT` typing. Keep it stateless; input arrives via `SharedFlow`/broadcast.
 - `net/SignalingClient.kt` — OkHttp WebSocket, JSON protocol per `SPEC.md §5`. Single connection.
+- `sensors/OrientationReporter.kt` — rotation-vector pose stream for the viewer mockup
+  (`SPEC.md §5.2`); throttled, own thread, only forwarded while watched.
+- `pairing/PairingPrefs.kt` — `axie-remote://pair` URI codec + shared prefs keys (`SPEC.md §5.3`).
+- `scan/ScanActivity.kt` — QR scanner (zxing, offline); valid code persists + `RESULT_OK`.
 - `res/xml/accessibilityservice.xml` — `canPerformGestures="true"` (injecting input breaks without it).
 
 Rules: no screen frames in logs or disk; coordinates normalized 0..1 until dispatch;

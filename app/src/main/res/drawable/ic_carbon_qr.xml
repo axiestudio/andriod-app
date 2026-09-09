@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <!-- QR glyph: three finder squares + modules, Carbon stroke style. -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@color/carbon_blue_60"
+        android:strokeWidth="2"
+        android:pathData="M4,4h7v7h-7zM21,4h7v7h-7zM4,21h7v7h-7z" />
+    <path
+        android:fillColor="@color/carbon_blue_60"
+        android:pathData="M15,4h3v3h-3zM24,15h3v3h-3zM15,15h3v3h-3zM20,20h3v3h-3zM15,25h3v3h-3zM25,25h3v3h-3zM20,10h3v3h-3zM10,15h3v3h-3z" />
+</vector>

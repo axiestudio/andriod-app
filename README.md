@@ -43,13 +43,20 @@ for Axie Remote once when asked).
 
 ## Use (on device)
 
-1. Open **Axie Remote** → **Start sharing** → accept the system screen-cast dialog.
+1. **Fastest:** open the viewer `/mobile` page → Phones → QR, then in the app tap
+   **Scan QR** and point at the code (relay URL + token fill in by themselves).
+   Or type the pair by hand: open **Axie Remote** → **Start sharing** → accept the system screen-cast dialog.
 2. Settings → Accessibility → enable **Axie Control** (required for input).
 3. Test buttons: tap-center, Back, Home. `adb logcat -s AxieRemote:D` shows frame counts.
+   The sharing tile also shows a live `↑ frames · watchers · pose` line while sharing.
 4. Stop anytime in-app, or revoke via the system screen-share chip.
 
 ## Protocol
 
 The app speaks the JSON-over-WebSocket protocol in [`SPEC.md`](./SPEC.md) §5
 (`hello` / `frame` / `tap` / `swipe` / `key` / `text`). Point it at a relay to drive
-it from a web viewer — the viewer side lives outside this repo.
+it from a web viewer — the viewer side lives in the console app:
+
+- Relay: `apps/console/scripts/device-relay.mjs` (`bun run relay` from `apps/console`)
+- Viewer: `/mobile` page (Carbon UI) — same relay URL + device token as the
+  phone's pairing screen. See `apps/console/SPEC.md` §13.

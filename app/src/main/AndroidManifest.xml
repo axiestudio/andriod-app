@@ -6,6 +6,9 @@
     <!-- Mandatory on API 34+ to start a foreground service of type mediaProjection. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- QR pairing scanner only; camera-less devices stay installable. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <!-- Self-update: request install of downloaded APK via PackageInstaller. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
@@ -24,6 +27,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".scan.ScanActivity"
+            android:exported="false" />
 
         <receiver
             android:name=".update.InstallReceiver"

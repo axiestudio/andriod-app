@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Axie Control accessibility service.
+
+  canPerformGestures=true  → dispatchGesture() tap/swipe/long-press/drag (goal.md §3).
+  canRetrieveWindowContent=true → rootInActiveWindow + findFocus + ACTION_SET_TEXT
+      typing and ACTION_SCROLL_* scrolling. Without this, typing can NEVER work
+      (rootInActiveWindow is always null).
+  Flags retrieve interactive windows + not-important views so scrolling/typing
+      resolves nodes inside WebViews, lists and editors.
+-->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeAllMask"
     android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
     android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
     android:canTakeScreenshot="false"
     android:description="@string/accessibility_description"
     android:notificationTimeout="50" />
