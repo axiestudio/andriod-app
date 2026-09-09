@@ -161,11 +161,10 @@ class WebRtcClient(
                 },
             )!!.also { pc = it }
 
-            // Control channel (ordered, reliable — input events must not drop).
-            val init = DataChannel.Init().apply { ordered = true }
-            dataChannel = peer.createDataChannel(CONTROL_CHANNEL, init).also {
-                observeChannel(it)
-            }
+            // Control channel: the VIEWER (offerer) owns the "control"
+            // DataChannel — as the answerer we receive it via the observer's
+            // onDataChannel below. Pre-creating a same-label channel here
+            // would fight the offer's m-line during negotiation.
 
             // Screen capture → video track. The revocation callback is
             // registered BEFORE capture starts so "Stop streaming" from
@@ -256,24 +255,33 @@ class WebRtcClient(
 
     private fun answerPeer(sdp: JSONObject) {
         val peer = pc ?: return
+        // setRemoteDescription is ASYNC — createAnswer must wait for onSetSuccess,
+        // otherwise libwebrtc rejects the answer ("wrong signaling state").
         peer.setRemoteDescription(
-            noopSdpObserver(),
+            object : SdpObserver by noopSdpObserver() {
+                override fun onSetSuccess() {
+                    peer.createAnswer(
+                        object : SdpObserver by noopSdpObserver() {
+                            override fun onCreateSuccess(description: SessionDescription) {
+                                peer.setLocalDescription(noopSdpObserver(), description)
+                                postSignal(
+                                    "answer",
+                                    JSONObject().put(
+                                        "sdp",
+                                        JSONObject()
+                                            .put("type", "answer")
+                                            .put("sdp", description.description),
+                                    ),
+                                )
+                                onState("connecting")
+                            }
+                        },
+                        MediaConstraints(),
+                    )
+                }
+            },
             SessionDescription(SessionDescription.Type.OFFER, sdp.optString("sdp")),
         )
-        val constraints = MediaConstraints()
-        peer.createAnswer(object : SdpObserver by noopSdpObserver() {
-            override fun onCreateSuccess(description: SessionDescription) {
-                peer.setLocalDescription(noopSdpObserver(), description)
-                postSignal(
-                    "answer",
-                    JSONObject().put(
-                        "sdp",
-                        JSONObject().put("type", "answer").put("sdp", description.description),
-                    ),
-                )
-                onState("connecting")
-            }
-        }, constraints)
     }
 
     private fun addRemoteIce(payload: JSONObject?) {
@@ -304,7 +312,7 @@ class WebRtcClient(
         }
     }
 
-    /** Lightweight pairing ping so the CRM shows the phone as online. */
+    /** Signs up with the CRM so the viewer sees the phone as online. */
     fun register(onReady: (name: String) -> Unit) {
         executor.execute {
             try {
@@ -319,6 +327,26 @@ class WebRtcClient(
             } catch (error: Exception) {
                 Log.w(TAG, "register failed", error)
             }
+        }
+    }
+
+    /**
+     * Foreground-service keepalive tick: re-registers with the CRM so the
+     * viewer's roster shows "App open" (presence window is 45 s). Cheap idempotent
+     * call — also our liveness ping while waiting for a viewer.
+     */
+    fun keepAlive() {
+        register { }
+    }
+
+    /** Sends a control message to the viewer (pong, telemetry). No-op when closed. */
+    fun sendControl(message: JSONObject) {
+        val dc = dataChannel ?: return
+        if (dc.state() != DataChannel.State.OPEN) return
+        try {
+            dc.send(DataChannel.Buffer(ByteBuffer.wrap(message.toString().toByteArray()), false))
+        } catch (error: Exception) {
+            Log.w(TAG, "sendControl failed", error)
         }
     }
 

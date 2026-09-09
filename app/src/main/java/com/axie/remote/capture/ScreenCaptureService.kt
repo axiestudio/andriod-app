@@ -20,8 +20,10 @@ import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import java.util.Timer
 import android.provider.Settings
 import android.util.Base64
+import org.json.JSONObject
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
@@ -33,6 +35,7 @@ import com.axie.remote.net.SignalingClient
 import com.axie.remote.net.WebRtcClient
 import com.axie.remote.sensors.OrientationReporter
 import java.io.ByteArrayOutputStream
+import java.util.TimerTask
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -99,6 +102,7 @@ class ScreenCaptureService : Service() {
     private var signaling: SignalingClient? = null
     private var webRtc: WebRtcClient? = null
     private var orientation: OrientationReporter? = null
+    private var keepAlive: Timer? = null
     private val frames = AtomicLong(0)
     private var lastSentAt = 0L
     // viewerCount lives on the companion (session telemetry); its contract:
@@ -337,8 +341,18 @@ class ScreenCaptureService : Service() {
             signalBase = httpsBase,
             rawToken = token,
             onInput = { msg ->
-                val ok = ControlAccessibilityService.handleRemoteCommand(msg)
-                Log.i(TAG, "remote ${msg.optString("type")} -> ${if (ok) "dispatched" else "FAILED"}")
+                when (msg.optString("type")) {
+                    // Transport-level liveness — answered here, not by the
+                    // accessibility service (which stays transport-agnostic).
+                    "ping" -> {
+                        webRtc?.sendControl(JSONObject().put("type", "pong"))
+                        Log.i(TAG, "ping -> pong")
+                    }
+                    else -> {
+                        val ok = ControlAccessibilityService.handleRemoteCommand(msg)
+                        Log.i(TAG, "remote ${msg.optString("type")} -> ${if (ok) "dispatched" else "FAILED"}")
+                    }
+                }
             },
             onState = { state ->
                 relayState = when (state) {
@@ -361,6 +375,17 @@ class ScreenCaptureService : Service() {
             },
         )
         webRtc?.register { name -> Log.i(TAG, "registered with CRM as \"$name\"") }
+        val keepAliveTimer = Timer("AxieKeepAlive", true)
+        keepAlive = keepAliveTimer
+        keepAliveTimer.schedule(
+            object : TimerTask() {
+                override fun run() {
+                    webRtc?.keepAlive()
+                }
+            },
+            30_000L,
+            30_000L,
+        )
         webRtc?.onCaptureGranted(Activity.RESULT_OK, resultData)
         updateNotification("P2P sharing — waiting for the viewer…")
         Log.i(TAG, "WebRTC session started signalBase=$httpsBase")
@@ -374,6 +399,8 @@ class ScreenCaptureService : Service() {
     }
 
     private fun stopCapture() {
+        keepAlive?.cancel()
+        keepAlive = null
         try { webRtc?.stop() } catch (e: Exception) {
             Log.w(TAG, "stop WebRTC session failed", e)
         }
