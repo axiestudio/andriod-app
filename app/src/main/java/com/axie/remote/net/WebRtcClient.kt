@@ -103,9 +103,12 @@ class WebRtcClient(
         executor.execute {
             try {
                 startPipeline(resultCode, data)
+                // Must precede pollLoop: this flag IS the loop's lifeline.
+                running = true
                 onState("ready")
                 pollLoop()
             } catch (error: Exception) {
+                running = false
                 Log.e(TAG, "pipeline failed", error)
                 onError(error.message ?: "capture pipeline failed")
             }
@@ -363,39 +366,41 @@ class WebRtcClient(
     }
 
     private fun postSignal(kind: String, payload: JSONObject) {
-        executor.execute {
-            try {
-                http.postJson(
-                    "$signalBase/device/signals",
-                    JSONObject()
-                        .put("token", rawToken)
-                        .put("kind", kind)
-                        .put("payload", payload)
-                        .toString(),
-                )
-            } catch (error: Exception) {
-                Log.w(TAG, "signal post failed: $kind", error)
-            }
+        // DIRECT CALL — do NOT route through the executor: the poll loop
+        // occupies it for the whole session, and queueing answers/ICE behind
+        // it starves them forever (the phone polled offers but its answers
+        // never left — the multi-release "stuck on the offer" root cause).
+        try {
+            http.postJson(
+                "$signalBase/device/signals",
+                JSONObject()
+                    .put("token", rawToken)
+                    .put("kind", kind)
+                    .put("payload", payload)
+                    .toString(),
+            )
+        } catch (error: Exception) {
+            Log.w(TAG, "signal post failed: $kind", error)
         }
     }
 
     /** Registers with the CRM (presence, sticky device id, pending count). */
     fun register(onReady: (name: String) -> Unit) {
-        executor.execute {
-            try {
-                val response = http.postJson(
-                    "$signalBase/device/register",
-                    JSONObject()
-                        .put("token", rawToken)
-                        .put("deviceId", android.os.Build.MODEL)
-                        .toString(),
-                )
-                if (response?.optBoolean("ok") == true) {
-                    onReady(response.optString("name"))
-                }
-            } catch (error: Exception) {
-                Log.w(TAG, "register failed", error)
+        // Direct: the keepalive timer thread calls this — executor-queueing
+        // would starve it behind the poll loop.
+        try {
+            val response = http.postJson(
+                "$signalBase/device/register",
+                JSONObject()
+                    .put("token", rawToken)
+                    .put("deviceId", android.os.Build.MODEL)
+                    .toString(),
+            )
+            if (response?.optBoolean("ok") == true) {
+                onReady(response.optString("name"))
             }
+        } catch (error: Exception) {
+            Log.w(TAG, "register failed", error)
         }
     }
 
@@ -422,6 +427,19 @@ class WebRtcClient(
     fun stopAll() {
         val wasRunning = running
         running = false
+        // Tell a connected viewer the phone stopped (web session → idle).
+        if (inSession()) {
+            try {
+                http.postJson(
+                    "$signalBase/device/signals",
+                    JSONObject()
+                        .put("token", rawToken)
+                        .put("kind", "hangup")
+                        .put("payload", JSONObject().put("by", "device"))
+                        .toString(),
+                )
+            } catch (_: Exception) {}
+        }
         endSessionQuietly()
         try {
             capturer?.stopCapture()

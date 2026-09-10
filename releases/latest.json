@@ -1,6 +1,6 @@
 {
-  "versionCode": 12,
-  "versionName": "0.2.1",
-  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.2.1-release.apk",
-  "notes": "AUTO-ACCEPT: Sharing ON = capture pipeline stays warm and every web Connect is answered instantly and silently \u2014 no prompts. A viewer leaving never stops sharing; Stop Sharing (the toggle) is the only off switch. New offers replace stale sessions automatically."
+  "versionCode": 13,
+  "versionName": "0.2.2",
+  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.2.2-release.apk",
+  "notes": "THE fix for 'stuck on the offer': two release-blocking bugs \u2014 the auto-accept loop flag was never set (phone polled nothing), and every answer/ICE post was queued behind the poll loop on the same thread (answers never left the phone). Both fixed; sharing Stop now also notifies the web."
 }
