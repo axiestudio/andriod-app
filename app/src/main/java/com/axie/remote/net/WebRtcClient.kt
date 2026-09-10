@@ -67,11 +67,11 @@ class WebRtcClient(
     private var surfaceHelper: SurfaceTextureHelper? = null
     private var dataChannel: DataChannel? = null
     /**
-     * Mailbox cursor — SYNCED TO SERVER TIME on register. The phone's wall
-     * clock can be minutes off; a locally-derived cursor makes fresh rows
-     * invisible (createdAt > cursor never matches) with zero error output.
+     * Row ids already processed. The mailbox is opaque: every poll may return
+     * ALL live rows for this side, so dedupe by id — no clocks, no cursors,
+     * no skew failure modes.
      */
-    private var cursor: Long = 0L
+    private val seenRowIds = HashSet<String>()
     private var running = false
     /** Set before startCapture so a mid-session revocation is always observed. */
     private var projectionCb: MediaProjection.Callback? = null
@@ -223,26 +223,20 @@ class WebRtcClient(
     private fun pollLoop() {
         executor.execute {
             var answered = false
-            // First poll after (re)connect: start 45 s back IN SERVER TIME —
-            // old enough to catch an offer posted just before we polled, new
-            // enough to skip stale junk (rows live 30 s).
-            if (cursor == 0L) {
-                cursor = maxOf(0L, serverNow() - 45_000L)
-            }
             while (running) {
                 try {
                     val response = http.postJson(
                         "$signalBase/device/poll",
                         JSONObject()
                             .put("token", rawToken)
-                            .put("after", cursor)
-                            .put("waitMs", if (answered) 8_000 else 8_000)
+                            .put("waitMs", 8_000)
                             .toString(),
                     ) ?: continue.also { Thread.sleep(1_500) }
                     val signals = response.optJSONArray("signals") ?: continue
                     for (index in 0 until signals.length()) {
                         val row = signals.getJSONObject(index)
-                        cursor = maxOf(cursor, parseTimestamp(row.optString("createdAt")))
+                        val rowId = row.optString("id")
+                        if (!seenRowIds.add(rowId)) continue
                         when (row.optString("kind")) {
                             "ping" -> {
                                 // Web→phone presence probe: echo the payload
@@ -339,15 +333,6 @@ class WebRtcClient(
                         .toString(),
                 )
                 if (response?.optBoolean("ok") == true) {
-                    // Align the mailbox cursor to the server's clock: offset =
-                    // serverNow - phoneNow. Every cursor value we send is then
-                    // in server time regardless of the phone's clock accuracy.
-                    val serverNow = response.optLong("serverTime", 0L)
-                    if (serverNow > 0) {
-                        synchronized(serverOffsetLock) {
-                            serverOffsetMs = serverNow - System.currentTimeMillis()
-                        }
-                    }
                     onReady(response.optString("name"))
                 }
             } catch (error: Exception) {
@@ -356,13 +341,6 @@ class WebRtcClient(
         }
     }
 
-    private val serverOffsetLock = Any()
-
-    /** Server-clock offset (serverNow - phoneNow) captured at register. */
-    private var serverOffsetMs: Long = 0L
-
-    private fun serverNow(): Long =
-        synchronized(serverOffsetLock) { System.currentTimeMillis() + serverOffsetMs }
 
     /**
      * Web→phone presence probe answered outside a WebRTC session: POSTs a
@@ -444,11 +422,7 @@ class WebRtcClient(
         }
     }
 
-    private fun parseTimestamp(iso: String): Long = runCatching {
-        java.time.Instant.parse(iso).toEpochMilli()
-    }.getOrDefault(0L)
 
-    /** Minimal JSON POST used for signaling. */
     inner class SignalingHttp {
         private val client = okhttp3.OkHttpClient()
 
