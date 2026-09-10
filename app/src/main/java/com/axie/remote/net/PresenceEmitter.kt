@@ -23,7 +23,7 @@ class PresenceEmitter(
 	private val signalBase: () -> String?,
 	private val token: () -> String?,
 	private val deviceId: () -> String = { "" },
-	private val onResult: ((name: String?) -> Unit)? = null,
+	private val onResult: ((name: String?, pending: Int) -> Unit)? = null,
 ) {
 	private val running = AtomicBoolean(false)
 	private val main = Handler(Looper.getMainLooper())
@@ -38,6 +38,7 @@ class PresenceEmitter(
 			if (base != null && !tok.isNullOrBlank()) {
 				Thread({
 					var name: String? = null
+					var pending = 0
 					try {
 						val body = JSONObject().apply {
 							put("token", tok)
@@ -55,13 +56,14 @@ class PresenceEmitter(
 								}.getOrNull()
 								if (json?.optBoolean("ok") == true) {
 									name = json.optString("name")
+									pending = json.optInt("pending", 0)
 								}
 							}
 						}
 					} catch (_: Exception) {
 						// Offline — presence simply lapses until the next tick.
 					}
-					main.post { onResult?.invoke(name) }
+					main.post { onResult?.invoke(name, pending) }
 				}, "AxiePresence").start()
 			}
 			main.postDelayed(this, INTERVAL_MS)

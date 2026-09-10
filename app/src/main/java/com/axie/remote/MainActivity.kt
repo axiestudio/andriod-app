@@ -55,17 +55,48 @@ class MainActivity : AppCompatActivity() {
     @Volatile
     private var lastCheckInAt: Long = 0L
 
+    /** True while the "Web viewer wants to connect" dialog is on screen. */
+    private var ringShowing = false
+
     private val presence = PresenceEmitter(
         signalBase = { PairingPrefs.crmSignalBase(applicationContext) },
         token = { PairingPrefs.load(applicationContext)?.token.orEmpty() },
         deviceId = { PairingPrefs.load(applicationContext)?.serverDeviceId.orEmpty() },
-        onResult = { name ->
+        onResult = { name, pending ->
             if (name != null) {
                 lastCheckInAt = System.currentTimeMillis()
             }
-            runOnUiThread { renderPairing() }
+            runOnUiThread {
+                renderPairing()
+                // RING: a live viewer posted an offer and this phone is not
+                // sharing yet. While sharing, the session poll loop already
+                // answers offers — no popup, it just connects (auto-accept).
+                if (pending > 0 && !ScreenCaptureService.isRunning && !ringShowing) {
+                    showIncomingConnect()
+                }
+            }
         },
     )
+
+    /**
+     * The ring: a Material dialog with a single primary action — start
+     * sharing, which routes through the standard notification + capture
+     * consent flow (the system mediaProjection dialog is the only permission
+     * moment, exactly like a manual start).
+     */
+    private fun showIncomingConnect() {
+        ringShowing = true
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.ring_title))
+            .setMessage(getString(R.string.ring_message))
+            .setPositiveButton(R.string.ring_accept) { _, _ ->
+                ringShowing = false
+                requestSharing()
+            }
+            .setNegativeButton(R.string.action_cancel) { _, _ -> ringShowing = false }
+            .setOnDismissListener { ringShowing = false }
+            .show()
+    }
 
     private lateinit var pairedBlock: View
     private lateinit var unpairedBlock: View

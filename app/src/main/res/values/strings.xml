@@ -80,6 +80,9 @@
     <string name="pair_unpaired">Unpaired. Scan the QR on the web viewer to pair again.</string>
     <string name="action_forget">Unpair</string>
     <string name="pair_probing">Verifying pairing…</string>
+    <string name="ring_title">Connect request</string>
+    <string name="ring_message">Your computer\'s web viewer wants to see this phone\'s screen. Start sharing to connect?</string>
+    <string name="ring_accept">Start sharing</string>
     <string name="test_connection">Test connection</string>
     <string name="scan_qr">Scan pairing QR</string>
     <string name="scan_title">Scan pairing code</string>
