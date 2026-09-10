@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "0.1.8",
-  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.8-release.apk",
-  "notes": "Critical connectivity fix: pairing URLs now point directly at the CRM API \u2014 a relay middleman was blocking the app's requests (HTTP 400/403). Old pairings self-repair on open. Status line now tells the truth: 'Phone online', 'Web viewer is OPEN', last check-in time; failures show the server's own message instead of a bare code."
+  "versionCode": 10,
+  "versionName": "0.1.9",
+  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.9-release.apk",
+  "notes": "Connect request ring: press Connect on the web and this phone pops 'Start sharing?' \u2014 one tap connects. Already sharing connects silently (auto-accept). Bare JSON content-type on all signaling posts (belt-and-braces for strict relays)."
 }
