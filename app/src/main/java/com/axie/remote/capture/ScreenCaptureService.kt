@@ -355,26 +355,32 @@ class ScreenCaptureService : Service() {
                 }
             },
             onState = { state ->
+                // Pipeline/session split: "closed" and "ready" mean a viewer
+                // left — the capture pipeline stays up and the next offer is
+                // auto-accepted. Only ACTION_STOP (Sharing OFF) tears the
+                // service down.
                 relayState = when (state) {
                     "live" -> "live"
+                    "ready" -> "ready"
                     "connecting", "answering", "starting" -> "connecting"
                     "failed" -> "failed"
                     else -> "off"
                 }
                 when (state) {
-                    "live" -> updateNotification("Live — P2P sharing + remote control ready")
-                    "failed" -> updateNotification("P2P session failed")
-                    "closed" -> { stopCapture(); stopSelf() }
+                    "live" -> updateNotification("Live — viewer connected")
+                    "ready" -> updateNotification("Sharing ON — waiting for a viewer (auto-accept)")
+                    "failed" -> updateNotification("P2P session failed — still ready for the next viewer")
+                    "closed" -> updateNotification("Viewer left — waiting for the next one")
                     else -> {}
                 }
             },
             onError = { message ->
                 Log.e(TAG, "WebRTC error: $message")
-                relayState = "failed"
-                updateNotification("P2P error: $message")
+                relayState = "ready"
+                updateNotification("P2P error: $message — ready for the next viewer")
             },
         )
-        webRtc?.register { name -> Log.i(TAG, "registered with CRM as \"$name\"") }
+        webRtc?.register { name -> Log.i(TAG, "registered with CRM as \"$name\" (auto-accept ON)") }
         val keepAliveTimer = Timer("AxieKeepAlive", true)
         keepAlive = keepAliveTimer
         keepAliveTimer.schedule(
@@ -387,8 +393,8 @@ class ScreenCaptureService : Service() {
             30_000L,
         )
         webRtc?.onCaptureGranted(Activity.RESULT_OK, resultData)
-        updateNotification("P2P sharing — waiting for the viewer…")
-        Log.i(TAG, "WebRTC session started signalBase=$httpsBase")
+        updateNotification("Sharing ON — auto-accepting viewer connections")
+        Log.i(TAG, "capture pipeline up, auto-accept loop running signalBase=$httpsBase")
     }
 
     private fun deviceId(): String {
@@ -401,7 +407,7 @@ class ScreenCaptureService : Service() {
     private fun stopCapture() {
         keepAlive?.cancel()
         keepAlive = null
-        try { webRtc?.stop() } catch (e: Exception) {
+        try { webRtc?.stopAll() } catch (e: Exception) {
             Log.w(TAG, "stop WebRTC session failed", e)
         }
         webRtc = null

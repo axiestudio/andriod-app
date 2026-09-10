@@ -482,7 +482,11 @@ class MainActivity : AppCompatActivity() {
         val checkInLine =
             if (lastCheckInAt == 0L) getString(R.string.checkin_never)
             else getString(R.string.checkin_ago, pluralSeconds(sinceCheckIn))
+        val sharing = ScreenCaptureService.isRunning
         pairedStatusText.text = when {
+            p.reachable && sharing && ScreenCaptureService.relayState == "live" ->
+                getString(R.string.status_live_session)
+            p.reachable && sharing -> getString(R.string.status_auto_accept)
             p.reachable && p.viewerOnline -> getString(R.string.status_two_way)
             p.reachable -> getString(R.string.status_phone_online)
             else -> getString(R.string.status_waiting)

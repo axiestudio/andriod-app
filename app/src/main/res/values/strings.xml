@@ -60,6 +60,8 @@
     <string name="scan_pair">Scan pairing QR</string>
     <string name="pair_status">Paired: %1$s</string>
     <string name="status_waiting">Connecting to server…</string>
+    <string name="status_auto_accept">Sharing ON — web Connect connects instantly</string>
+    <string name="status_live_session">Live — screen is on the web</string>
     <string name="status_phone_online">Phone online</string>
     <string name="status_two_way">Phone online · web watching</string>
     <string name="checkin_never">no check-in yet</string>
