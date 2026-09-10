@@ -1,6 +1,6 @@
 {
-  "versionCode": 10,
-  "versionName": "0.1.9",
-  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.1.9-release.apk",
-  "notes": "Connect request ring: press Connect on the web and this phone pops 'Start sharing?' \u2014 one tap connects. Already sharing connects silently (auto-accept). Bare JSON content-type on all signaling posts (belt-and-braces for strict relays)."
+  "versionCode": 11,
+  "versionName": "0.2.0",
+  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.2.0-release.apk",
+  "notes": "Simple architecture release: the signaling mailbox is opaque \u2014 no clocks, no cursors, dedupe by row id (clock skew can no longer hide anything). Connect on the web rings the phone (one tap to share); while sharing it auto-accepts; Stop on either side ends the session. Web badges now reflect real connection state."
 }
