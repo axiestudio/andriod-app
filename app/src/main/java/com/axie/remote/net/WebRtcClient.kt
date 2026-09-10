@@ -66,7 +66,12 @@ class WebRtcClient(
     private var videoSource: VideoSource? = null
     private var surfaceHelper: SurfaceTextureHelper? = null
     private var dataChannel: DataChannel? = null
-    private var cursor: Long = System.currentTimeMillis() - 60_000
+    /**
+     * Mailbox cursor — SYNCED TO SERVER TIME on register. The phone's wall
+     * clock can be minutes off; a locally-derived cursor makes fresh rows
+     * invisible (createdAt > cursor never matches) with zero error output.
+     */
+    private var cursor: Long = 0L
     private var running = false
     /** Set before startCapture so a mid-session revocation is always observed. */
     private var projectionCb: MediaProjection.Callback? = null
@@ -218,6 +223,12 @@ class WebRtcClient(
     private fun pollLoop() {
         executor.execute {
             var answered = false
+            // First poll after (re)connect: start 45 s back IN SERVER TIME —
+            // old enough to catch an offer posted just before we polled, new
+            // enough to skip stale junk (rows live 30 s).
+            if (cursor == 0L) {
+                cursor = maxOf(0L, serverNow() - 45_000L)
+            }
             while (running) {
                 try {
                     val response = http.postJson(
@@ -328,6 +339,15 @@ class WebRtcClient(
                         .toString(),
                 )
                 if (response?.optBoolean("ok") == true) {
+                    // Align the mailbox cursor to the server's clock: offset =
+                    // serverNow - phoneNow. Every cursor value we send is then
+                    // in server time regardless of the phone's clock accuracy.
+                    val serverNow = response.optLong("serverTime", 0L)
+                    if (serverNow > 0) {
+                        synchronized(serverOffsetLock) {
+                            serverOffsetMs = serverNow - System.currentTimeMillis()
+                        }
+                    }
                     onReady(response.optString("name"))
                 }
             } catch (error: Exception) {
@@ -335,6 +355,14 @@ class WebRtcClient(
             }
         }
     }
+
+    private val serverOffsetLock = Any()
+
+    /** Server-clock offset (serverNow - phoneNow) captured at register. */
+    private var serverOffsetMs: Long = 0L
+
+    private fun serverNow(): Long =
+        synchronized(serverOffsetLock) { System.currentTimeMillis() + serverOffsetMs }
 
     /**
      * Web→phone presence probe answered outside a WebRTC session: POSTs a
@@ -428,6 +456,7 @@ class WebRtcClient(
             val request = okhttp3.Request.Builder()
                 .url(url)
                 .post(body.toRequestBody("application/json".toMediaType()))
+                    .header("Content-Type", "application/json")
                 .build()
             client.newCall(request).execute().use { response ->
                 val text = response.body?.string() ?: return null

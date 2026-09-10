@@ -46,6 +46,7 @@ class PresenceEmitter(
 						val request = Request.Builder()
 							.url("$base/device/register")
 							.post(body.toRequestBody("application/json".toMediaType()))
+                    .header("Content-Type", "application/json")
 							.build()
 						client.newCall(request).execute().use { response ->
 							if (response.isSuccessful) {

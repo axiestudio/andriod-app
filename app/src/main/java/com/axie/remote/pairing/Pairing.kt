@@ -141,6 +141,7 @@ object PairingPrefs {
 			val request = Request.Builder()
 				.url("$signalBase/device/register")
 				.post(body.toRequestBody("application/json".toMediaType()))
+                    .header("Content-Type", "application/json")
 				.build()
 			okhttp3.OkHttpClient().newCall(request).execute().use { response ->
 				val text = response.body?.string().orEmpty()
