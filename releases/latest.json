@@ -1,6 +1,6 @@
 {
-  "versionCode": 14,
-  "versionName": "0.2.3",
-  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.2.3-release.apk",
-  "notes": "Hotspot default — phone hotspot → laptop host pair (192.168.43.x, no TURN) is now the primary path; same-WiFi also works. Phone fetches ICE (STUN+TURN) from device/register|poll, single EglBase, no NetworkOnMainThread, getReceivers null guard. See HOTSPOT-WEBRTC.md."
+  "versionCode": 15,
+  "versionName": "0.2.4",
+  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.2.4-release.apk",
+  "notes": "30fps H.264 video at 4 Mbps, system audio capture (WhatsApp calls via AudioPlaybackCapture), TURN-without-credentials guard, ICE type indicator in browser. Use hotspot or same-WiFi for ~15ms RTT real-time."
 }
