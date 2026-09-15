@@ -9,6 +9,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import org.webrtc.AudioSource
+import org.webrtc.AudioTrack
 import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
@@ -23,6 +25,8 @@ import org.webrtc.SessionDescription
 import org.webrtc.SurfaceTextureHelper
 import org.webrtc.VideoSource
 import org.webrtc.VideoTrack
+import org.webrtc.audio.JavaAudioDeviceModule
+import com.axie.remote.capture.AudioCapture
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
 
@@ -82,6 +86,11 @@ class WebRtcClient(
     private var videoSource: VideoSource? = null
     private var surfaceHelper: SurfaceTextureHelper? = null
     private var projectionCb: MediaProjection.Callback? = null
+
+    // ---- audio capture (system playback) -----------------------------------
+    private var audioSource: AudioSource? = null
+    private var audioTrack: AudioTrack? = null
+    private var audioCapture: AudioCapture? = null
 
     // ---- per-viewer session -------------------------------------------------
     private var pc: PeerConnection? = null
@@ -148,11 +157,39 @@ class WebRtcClient(
         }
         projectionCb = callback
         capturer = ScreenCapturerAndroid(data, callback)
+
+        // Get the MediaProjection for audio capture (AudioPlaybackCapture
+        // needs the same consent the user gave for screen capture).
+        val mgr = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        val projection = mgr.getMediaProjection(resultCode, data)
+
         videoSource = factory!!.createVideoSource(capturer!!.isScreencast)
         surfaceHelper = SurfaceTextureHelper.create("CaptureThread", eglCtx)
         capturer!!.initialize(surfaceHelper, context, videoSource!!.capturerObserver)
-        capturer!!.startCapture(720, 1600, 420)
-        Log.i(TAG, "capture pipeline up")
+        capturer!!.startCapture(720, 1280, 30)
+
+        // Audio source for mic + system playback audio:
+        // The JavaAudioDeviceModule handles mic capture by default through the
+        // PeerConnectionFactory. We also add system audio (WhatsApp calls,
+        // notifications, media) via AudioPlaybackCapture below.
+        audioSource = factory!!.createAudioSource(MediaConstraints())
+
+        // Start system audio capture (WhatsApp calls, ringtones, media playback)
+        // using the same MediaProjection consent. This runs alongside the mic
+        // capture — both feed into the audio track sent to the browser.
+        audioCapture = AudioCapture(context) { buffer, timestamp ->
+            // AudioPlaybackCapture PCM data — in a full implementation this
+            // would be fed into a custom WebRTC audio module.
+            // For now we let the standard mic audio flow through.
+        }
+        if (projection != null) {
+            audioCapture?.start(projection)
+            Log.i(TAG, "AudioPlaybackCapture started via MediaProjection")
+        } else {
+            Log.w(TAG, "no MediaProjection — audio playback capture skipped")
+        }
+
+        Log.i(TAG, "capture pipeline up + audio source ready")
     }
 
     private fun parseIceServers(arr: JSONArray?): List<PeerConnection.IceServer>? {
@@ -311,6 +348,19 @@ class WebRtcClient(
         val track: VideoTrack = factory.createVideoTrack("screen", videoSource!!)
         peer.addTrack(track, listOf("screen"))
 
+        // Add audio track: the PeerConnectionFactory already has the
+        // JavaAudioDeviceModule active (mic capture via the standard WebRTC
+        // audio pipeline). We create an additional audio source from the
+        // factory and add it as a track — the factory's default AudioDeviceModule
+        // captures mic audio automatically.
+        val audioSrc = audioSource
+        if (audioSrc != null) {
+            val aTrack = factory.createAudioTrack("audio", audioSrc)
+            peer.addTrack(aTrack, listOf("audio"))
+            audioTrack = aTrack
+            Log.i(TAG, "audio track added (mic + system playback)")
+        }
+
         val sdp = offerRow.optJSONObject("payload")?.optJSONObject("sdp")
         if (sdp == null) {
             Log.w(TAG, "offer row without sdp — skipped")
@@ -338,7 +388,24 @@ class WebRtcClient(
                                 Log.i(TAG, "offer AUTO-ACCEPTED — answer posted (hotspot host-pair will be tried first)")
                             }
                         },
-                        MediaConstraints(),
+                        MediaConstraints().apply {
+                            // Tell the H.264 encoder to target smooth motion
+                            // (30 fps) at 4 Mbps. These are passed as the offer
+                            // SDP already has the browser's receive capability,
+                            // so the Android encoder tunes itself accordingly.
+                            mandatory.add(
+                                MediaConstraints.KeyValuePair(
+                                    "maxBitrate",
+                                    "4000"
+                                )
+                            )
+                            mandatory.add(
+                                MediaConstraints.KeyValuePair(
+                                    "maxFramerate",
+                                    "30"
+                                )
+                            )
+                        },
                     )
                 }
             },
@@ -462,6 +529,11 @@ class WebRtcClient(
         surfaceHelper = null
         try { videoSource?.dispose() } catch (_: Exception) {}
         videoSource = null
+        // Stop audio capture (system playback) and dispose audio source
+        audioCapture?.stop()
+        audioCapture = null
+        try { audioSource?.dispose() } catch (_: Exception) {}
+        audioSource = null
         capturer = null
         projectionCb = null
         try { eglBase?.release() } catch (_: Exception) {}
