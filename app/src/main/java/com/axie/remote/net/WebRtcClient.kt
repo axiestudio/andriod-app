@@ -167,14 +167,25 @@ class WebRtcClient(
                 else -> emptyList()
             }
             if (urls.isEmpty()) continue
+            val isTurn = urls.any { it.startsWith("turn:") || it.startsWith("turns:") }
             val username = o.optString("username", "").takeIf { it.isNotEmpty() }
             val credential = o.optString("credential", "").takeIf { it.isNotEmpty() }
+            // A TURN server that arrives WITHOUT a username/credential is
+            // poisoned: libwebrtc logs "TURN server requires a username" from
+            // PeerConnectionImpl.setConfiguration and silently drops relay
+            // fallback. Skip the whole entry so the PeerConnection never sees
+            // it — host/srflx still work, and a correctly-configured TURN
+            // will relay once the API sends proper credentials.
+            if (isTurn && (username == null || credential == null)) {
+                Log.w(TAG, "TURN without creds skipped (urls=$urls)")
+                continue
+            }
             for (url in urls) {
                 val b = PeerConnection.IceServer.builder(url)
                 if (username != null) b.setUsername(username)
                 if (credential != null) b.setPassword(credential)
                 out.add(b.createIceServer())
-                Log.i(TAG, "ICE server: $url ${if (username != null) "(TURN)" else "(STUN)"}")
+                Log.i(TAG, "ICE server: $url ${if (isTurn) "(TURN)" else "(STUN)"}")
             }
         }
         return out.takeIf { it.isNotEmpty() }
