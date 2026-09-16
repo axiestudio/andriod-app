@@ -99,7 +99,7 @@ APK / one process for v1 (simplest lifecycle), split later if needed.
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-<!-- Phase 2+ only: <uses-permission android:name="android.permission.RECORD_AUDIO" /> -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
 ```
 
 Services:

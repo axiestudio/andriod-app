@@ -375,9 +375,13 @@ class ScreenCaptureService : Service() {
                 }
             },
             onError = { message ->
-                Log.e(TAG, "WebRTC error: $message")
-                relayState = "ready"
-                updateNotification("P2P error: $message — ready for the next viewer")
+                // Pipeline failure (Sharing never actually started): stop the
+                // service so the UI flips back to OFF instead of showing a
+                // fake Sharing ON that can never answer offers.
+                Log.e(TAG, "WebRTC pipeline failed: $message — stopping (tap Start to retry)")
+                relayState = "failed"
+                updateNotification("Sharing failed to start: $message — tap Start to retry")
+                stopSelf()
             },
         )
         webRtc?.register { name -> Log.i(TAG, "registered with CRM as \"$name\" (auto-accept ON)") }

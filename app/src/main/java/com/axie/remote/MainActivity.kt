@@ -143,6 +143,17 @@ class MainActivity : AppCompatActivity() {
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
             refreshAll()
+            requestMicThenConsent()
+        }
+
+    /**
+     * Microphone (WebRTC voice audio). Best-effort like notifications: either
+     * answer still leads to the capture consent — denial just means the viewer
+     * gets video only.
+     */
+    private val micPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            refreshAll()
             launchProjectionConsent()
         }
 
@@ -634,7 +645,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestNotifThenConsent() {
         if (Build.VERSION.SDK_INT < 33 || hasNotificationPermission()) {
-            launchProjectionConsent()
+            requestMicThenConsent()
             return
         }
         if (ActivityCompat.shouldShowRequestPermissionRationale(
@@ -655,6 +666,40 @@ class MainActivity : AppCompatActivity() {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
+
+    /**
+     * Documented runtime-permission flow for the microphone: already granted
+     * → go; rationale needed → educate, then ask; otherwise ask directly.
+     * Either answer leads to the capture consent — audio never blocks sharing.
+     */
+    private fun requestMicThenConsent() {
+        if (hasMicPermission()) {
+            launchProjectionConsent()
+            return
+        }
+        if (ActivityCompat.shouldShowRequestPermissionRationale(
+                this, Manifest.permission.RECORD_AUDIO
+            )
+        ) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.mic_rationale_title)
+                .setMessage(R.string.mic_rationale_message)
+                .setPositiveButton(R.string.action_continue) { _, _ ->
+                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                }
+                .setNegativeButton(R.string.action_not_now) { _, _ ->
+                    launchProjectionConsent()
+                }
+                .show()
+        } else {
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun hasMicPermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            this, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
 
     private fun requestNotifPermission() {
         if (Build.VERSION.SDK_INT < 33 || hasNotificationPermission()) return

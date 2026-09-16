@@ -6,6 +6,8 @@
     <!-- Mandatory on API 34+ to start a foreground service of type mediaProjection. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- WebRTC voice audio (mic) rides the screen-share PeerConnection; video-only when denied. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- QR pairing scanner only; camera-less devices stay installable. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />

@@ -131,6 +131,8 @@
 
     <string name="notif_rationale_title">Allow notifications?</string>
     <string name="notif_rationale_message">Android shows screen sharing through a persistent notification. Without it, sharing still works but you will not see the indicator. You can change this later in App info.</string>
+    <string name="mic_rationale_title">Allow microphone access?</string>
+    <string name="mic_rationale_message">Your voice joins the shared screen so the viewer can hear you. Without it, sharing still works with video only. You can change this later in App info.</string>
     <string name="action_continue">Continue</string>
     <string name="action_not_now">Not now</string>
     <string name="a11y_rationale_title">Enable remote control?</string>

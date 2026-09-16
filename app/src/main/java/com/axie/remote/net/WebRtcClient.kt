@@ -98,6 +98,7 @@ class WebRtcClient(
     private val pendingIce = ArrayDeque<JSONObject>()
     private val seenRowIds = HashSet<String>()
     @Volatile private var running = false
+    @Volatile private var connected = false
 
     private fun inSession(): Boolean = pc != null
 
@@ -158,38 +159,53 @@ class WebRtcClient(
         projectionCb = callback
         capturer = ScreenCapturerAndroid(data, callback)
 
-        // Get the MediaProjection for audio capture (AudioPlaybackCapture
-        // needs the same consent the user gave for screen capture).
-        val mgr = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        val projection = mgr.getMediaProjection(resultCode, data)
-
         videoSource = factory!!.createVideoSource(capturer!!.isScreencast)
         surfaceHelper = SurfaceTextureHelper.create("CaptureThread", eglCtx)
         capturer!!.initialize(surfaceHelper, context, videoSource!!.capturerObserver)
         capturer!!.startCapture(720, 1280, 30)
 
-        // Audio source for mic + system playback audio:
-        // The JavaAudioDeviceModule handles mic capture by default through the
-        // PeerConnectionFactory. We also add system audio (WhatsApp calls,
-        // notifications, media) via AudioPlaybackCapture below.
-        audioSource = factory!!.createAudioSource(MediaConstraints())
-
-        // Start system audio capture (WhatsApp calls, ringtones, media playback)
-        // using the same MediaProjection consent. This runs alongside the mic
-        // capture — both feed into the audio track sent to the browser.
-        audioCapture = AudioCapture(context) { buffer, timestamp ->
-            // AudioPlaybackCapture PCM data — in a full implementation this
-            // would be fed into a custom WebRTC audio module.
-            // For now we let the standard mic audio flow through.
-        }
-        if (projection != null) {
-            audioCapture?.start(projection)
-            Log.i(TAG, "AudioPlaybackCapture started via MediaProjection")
-        } else {
-            Log.w(TAG, "no MediaProjection — audio playback capture skipped")
-        }
+        startAudioCapture(resultCode, data)
 
         Log.i(TAG, "capture pipeline up + audio source ready")
+    }
+
+    /**
+     * Best-effort audio (mic source + system playback). Audio must never take
+     * down the video pipeline: any failure here only means the viewer gets a
+     * video-only answer — Sharing stays ON and offers keep auto-accepting.
+     */
+    private fun startAudioCapture(resultCode: Int, data: Intent) {
+        try {
+            // Get the MediaProjection for audio capture (AudioPlaybackCapture
+            // needs the same consent the user gave for screen capture).
+            val mgr = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            val projection = mgr.getMediaProjection(resultCode, data)
+
+            // Audio source for mic + system playback audio:
+            // The JavaAudioDeviceModule handles mic capture by default through the
+            // PeerConnectionFactory. We also add system audio (WhatsApp calls,
+            // notifications, media) via AudioPlaybackCapture below.
+            audioSource = factory!!.createAudioSource(MediaConstraints())
+
+            // Start system audio capture (WhatsApp calls, ringtones, media playback)
+            // using the same MediaProjection consent. This runs alongside the mic
+            // capture — both feed into the audio track sent to the browser.
+            audioCapture = AudioCapture(context) { _, _ ->
+                // AudioPlaybackCapture PCM data — in a full implementation this
+                // would be fed into a custom WebRTC audio module.
+                // For now we let the standard mic audio flow through.
+            }
+            if (projection != null) {
+                audioCapture?.start(projection)
+                Log.i(TAG, "AudioPlaybackCapture started via MediaProjection")
+            } else {
+                Log.w(TAG, "no MediaProjection — audio playback capture skipped")
+            }
+        } catch (error: Exception) {
+            Log.w(TAG, "audio init failed — continuing video-only", error)
+            audioSource = null
+            audioCapture = null
+        }
     }
 
     private fun parseIceServers(arr: JSONArray?): List<PeerConnection.IceServer>? {
@@ -247,7 +263,15 @@ class WebRtcClient(
                         .put("token", rawToken)
                         .put("waitMs", 8_000)
                         .toString(),
-                ) ?: continue.also { Thread.sleep(1_500) }
+                )
+                if (response == null) {
+                    // Server unreachable (no internet, API down, stale base URL):
+                    // back off instead of hammering — Sharing stays ON and the
+                    // next poll retries. The paired card's probe says why.
+                    Log.w(TAG, "poll: no response — retrying in 1.5 s (Sharing stays ON)")
+                    Thread.sleep(1_500)
+                    continue
+                }
                 // Piggy-backed ICE bundle (lets server TURN rotation land mid-session)
                 refreshIceFromJson(response)
                 val signals = response.optJSONArray("signals") ?: continue
@@ -272,8 +296,19 @@ class WebRtcClient(
     }
 
     private fun openSession(offerRow: JSONObject) {
-        val factory = this.factory ?: return
+        Log.i(TAG, "offer ${offerRow.optString("id")} received — auto-accepting")
+        val factory = this.factory ?: run {
+            Log.w(TAG, "offer ignored — capture pipeline not ready (Sharing did not finish starting)")
+            return
+        }
         if (inSession()) {
+            if (connected) {
+                // The viewer re-posts its offer every few seconds until it sees
+                // our answer. This session is already live — answering again
+                // would tear down working media, so the retry is ignored.
+                Log.i(TAG, "offer ignored — session already live (viewer retry)")
+                return
+            }
             Log.i(TAG, "new offer — replacing the current session")
             endSession()
         }
@@ -309,7 +344,7 @@ class WebRtcClient(
                 override fun onConnectionChange(newState: PeerConnection.PeerConnectionState) {
                     Log.i(TAG, "peer: $newState")
                     when (newState) {
-                        PeerConnection.PeerConnectionState.CONNECTED -> onState("live")
+                        PeerConnection.PeerConnectionState.CONNECTED -> { connected = true; onState("live") }
                         PeerConnection.PeerConnectionState.FAILED -> {
                             Log.w(TAG, "ICE failed — hotspot host-pair missed and no TURN relay (see HOTSPOT-WEBRTC.md Mode C)")
                             endSession()
@@ -348,17 +383,22 @@ class WebRtcClient(
         val track: VideoTrack = factory.createVideoTrack("screen", videoSource!!)
         peer.addTrack(track, listOf("screen"))
 
-        // Add audio track: the PeerConnectionFactory already has the
-        // JavaAudioDeviceModule active (mic capture via the standard WebRTC
-        // audio pipeline). We create an additional audio source from the
-        // factory and add it as a track — the factory's default AudioDeviceModule
-        // captures mic audio automatically.
-        val audioSrc = audioSource
-        if (audioSrc != null) {
-            val aTrack = factory.createAudioTrack("audio", audioSrc)
-            peer.addTrack(aTrack, listOf("audio"))
-            audioTrack = aTrack
-            Log.i(TAG, "audio track added (mic + system playback)")
+        // Add audio track (best-effort): the PeerConnectionFactory's default
+        // AudioDeviceModule captures mic audio automatically. Audio must never
+        // break the answer — any failure falls back to video-only with a log.
+        try {
+            val audioSrc = audioSource
+            if (audioSrc != null) {
+                val aTrack = factory.createAudioTrack("audio", audioSrc)
+                peer.addTrack(aTrack, listOf("audio"))
+                audioTrack = aTrack
+                Log.i(TAG, "audio track added (mic + system playback)")
+            } else {
+                Log.i(TAG, "no audio source — answering video-only")
+            }
+        } catch (error: Exception) {
+            Log.w(TAG, "audio track failed — answering video-only", error)
+            audioTrack = null
         }
 
         val sdp = offerRow.optJSONObject("payload")?.optJSONObject("sdp")
@@ -446,6 +486,7 @@ class WebRtcClient(
     }
 
     private fun endSession() {
+        connected = false
         try { dataChannel?.close() } catch (_: Exception) {}
         dataChannel = null
         try { pc?.close() } catch (_: Exception) {}
@@ -545,6 +586,7 @@ class WebRtcClient(
     }
 
     private fun endSessionQuietly() {
+        connected = false
         try { dataChannel?.close() } catch (_: Exception) {}
         dataChannel = null
         try { pc?.close() } catch (_: Exception) {}
