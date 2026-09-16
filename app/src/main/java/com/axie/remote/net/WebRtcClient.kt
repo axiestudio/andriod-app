@@ -25,6 +25,7 @@ import org.webrtc.SessionDescription
 import org.webrtc.SurfaceTextureHelper
 import org.webrtc.VideoSource
 import org.webrtc.VideoTrack
+import org.webrtc.ExternalAudioProcessingFactory
 import org.webrtc.audio.JavaAudioDeviceModule
 import com.axie.remote.capture.AudioCapture
 import java.nio.ByteBuffer
@@ -91,6 +92,9 @@ class WebRtcClient(
     private var audioSource: AudioSource? = null
     private var audioTrack: AudioTrack? = null
     private var audioCapture: AudioCapture? = null
+    /** Folds system audio into mic frames pre-encoder (pure-Java post-processing). */
+    private val mixer = SystemAudioMixer()
+    private var apmFactory: ExternalAudioProcessingFactory? = null
 
     // ---- per-viewer session -------------------------------------------------
     private var pc: PeerConnection? = null
@@ -145,9 +149,18 @@ class WebRtcClient(
         val egl = EglBase.create()
         eglBase = egl
         val eglCtx = egl.eglBaseContext
+        // External capture post-processing: SystemAudioMixer folds the phone's
+        // system audio into the mic frames before the encoder (pure Java, no
+        // native code — the mixer verifies the frame layout and disables
+        // itself with a log if anything is unexpected).
+        val apm = ExternalAudioProcessingFactory()
+        apm.setCapturePostProcessing(mixer)
+        apmFactory = apm
+        Log.i(TAG, "external capture post-processing attached (system-audio mixer)")
         factory = PeerConnectionFactory.builder()
             .setVideoEncoderFactory(DefaultVideoEncoderFactory(eglCtx, true, true))
             .setVideoDecoderFactory(DefaultVideoDecoderFactory(eglCtx))
+            .setAudioProcessingFactory(apm)
             .createPeerConnectionFactory()
 
         val callback = object : MediaProjection.Callback() {
@@ -190,11 +203,9 @@ class WebRtcClient(
             // Start system audio capture (WhatsApp calls, ringtones, media playback)
             // using the same MediaProjection consent. This runs alongside the mic
             // capture — both feed into the audio track sent to the browser.
-            audioCapture = AudioCapture(context) { _, _ ->
-                // AudioPlaybackCapture PCM data — in a full implementation this
-                // would be fed into a custom WebRTC audio module.
-                // For now we let the standard mic audio flow through.
-            }
+            // System PCM flows into the mixer, which folds it into the mic
+            // frames pre-encoder (see SystemAudioMixer).
+            audioCapture = AudioCapture(context) { pcm, _ -> mixer.pushPcm(pcm) }
             if (projection != null) {
                 audioCapture?.start(projection)
                 Log.i(TAG, "AudioPlaybackCapture started via MediaProjection")
@@ -582,6 +593,9 @@ class WebRtcClient(
         try { factory?.dispose() } catch (_: Exception) {}
         // Keep factory null so next Sharing ON re-creates with fresh EglBase
         factory = null
+        try { apmFactory?.destroy() } catch (_: Exception) {}
+        apmFactory = null
+        mixer.reset()
         if (wasRunning) onState("closed")
     }
 

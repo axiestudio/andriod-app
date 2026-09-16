@@ -17,7 +17,7 @@ Build a small, real native Android app you install on your phone that:
 ### Non-goals (v1)
 
 - No Play Store release, no rooting, no custom ROM.
-- No audio capture v1 (add later via `AudioPlaybackCapture`).
+- No audio capture v1 (shipped in v0.2.5+: mic via WebRTC ADM + system audio mixed pre-encoder, see §9).
 - No multi-device fleet management v1 (one phone ↔ one viewer session).
 - No covert surveillance: every capture requires the on-device user to grant consent.
 
@@ -289,6 +289,25 @@ mobile/
 - [ ] **M3 stream:** two phones or phone+browser on LAN: viewer sees 720p ≥ 2 fps, latency < 1 s;
       viewer tap produces a tap on the device.
 - [ ] **M4 hardened:** reconnect on network drop, rotation-safe scaling, release APK signed, README install steps.
+
+## 8.1 Audio (v0.2.5+: mic + system sound, one track)
+
+- Mic rides the stock WebRTC audio track (`JavaAudioDeviceModule`, `RECORD_AUDIO`
+  asked in the sharing flow, video-only when denied).
+- System audio (`AudioCapture`, AudioPlaybackCapture 48 kHz mono int16) is folded
+  into the mic frames pre-encoder by `net/SystemAudioMixer.kt`, registered via
+  GetStream's `ExternalAudioProcessingFactory.setCapturePostProcessing`
+  (Context7 `/getstream/webrtc-android`, verified present in 1.3.8 incl. native
+  symbols; no Java injection API exists, a native ADM would need unshipped
+  WebRTC headers — rejected).
+- Guards (all logged, mic never at risk): first frame must be 1 band
+  (time-domain) + writable or mixing disables itself; `process()` never throws;
+  starved frames mix zeros; FIFO overflow drops oldest; 48 kHz→native-rate
+  linear resample from `initialize()`; saturating add at 0.5 system gain.
+- Verified on emulator (`axie-test` AVD): `mixer init: rate=16000 channels=1`,
+  pipeline + poll loop survive AudioPlaybackCapture failure. `process()` fires
+  only during a live call — first real-call log line `first process:
+  bands=…` confirms the domain on device.
 
 ## 9. Risks & Play-policy notes
 
