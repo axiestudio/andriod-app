@@ -1,6 +1,6 @@
 {
-  "versionCode": 17,
-  "versionName": "0.2.6",
-  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.2.6-release.apk",
-  "notes": "System audio milestone: phone mixes WhatsApp-call/media sound into the mic track pre-encoder (pure-Java post-processing, no native code). Audio can never break video — every failure falls back to mic-only with a log. Mic permission asked in the sharing flow."
+  "versionCode": 18,
+  "versionName": "0.2.7",
+  "apkUrl": "https://raw.githubusercontent.com/axiestudio/andriod-app/main/releases/AxieRemote-v0.2.7-release.apk",
+  "notes": "Black-screen fix + session hardening: single stream id for A+V with video track enabled/disposed per session; one offer answered per poll batch; 8 s grace on transient disconnects (pipeline stays warm); audio MediaProjection + capture thread no longer leak per Sharing cycle; native teardown off the main thread; real MediaProjection result code; text input truncated. Requires the matching web deploy (viewer aggregates remote tracks, single-answer guard, signaling-phase ICE queue, fail-fast no-answer, letterbox-correct taps)."
 }
