@@ -144,7 +144,7 @@ class ControlAccessibilityService : AccessibilityService() {
                             false
                         }
                     }
-                    "text" -> typeText(msg.optString("text", ""))
+                    "text" -> typeText(msg.optString("text", "").take(5000))
                     else -> {
                         Log.w(TAG, "unknown input type: ${msg.optString("type")}")
                         false

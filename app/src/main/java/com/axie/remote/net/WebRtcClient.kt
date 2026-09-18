@@ -92,6 +92,8 @@ class WebRtcClient(
     private var audioSource: AudioSource? = null
     private var audioTrack: AudioTrack? = null
     private var audioCapture: AudioCapture? = null
+    /** Second MediaProjection (same consent) feeding AudioPlaybackCapture — must be stopped, not leaked. */
+    private var audioProjection: MediaProjection? = null
     /** Folds system audio into mic frames pre-encoder (pure-Java post-processing). */
     private val mixer = SystemAudioMixer()
     private var apmFactory: ExternalAudioProcessingFactory? = null
@@ -99,8 +101,11 @@ class WebRtcClient(
     // ---- per-viewer session -------------------------------------------------
     private var pc: PeerConnection? = null
     private var dataChannel: DataChannel? = null
+    private var screenTrack: VideoTrack? = null
     private val pendingIce = ArrayDeque<JSONObject>()
     private val seenRowIds = HashSet<String>()
+    /** Generation counter: stale DISCONNECTED-grace runnables exit quietly. */
+    private var disconnectGen = 0
     @Volatile private var running = false
     @Volatile private var connected = false
 
@@ -207,6 +212,7 @@ class WebRtcClient(
             // frames pre-encoder (see SystemAudioMixer).
             audioCapture = AudioCapture(context) { pcm, _ -> mixer.pushPcm(pcm) }
             if (projection != null) {
+                audioProjection = projection
                 audioCapture?.start(projection)
                 Log.i(TAG, "AudioPlaybackCapture started via MediaProjection")
             } else {
@@ -286,11 +292,26 @@ class WebRtcClient(
                 // Piggy-backed ICE bundle (lets server TURN rotation land mid-session)
                 refreshIceFromJson(response)
                 val signals = response.optJSONArray("signals") ?: continue
+                // One offer per batch: the viewer re-posts its offer every 7 s
+                // until it sees an answer, so a delayed poll can deliver two.
+                // Answering both would create two PCs and post two answers —
+                // the viewer applies the first and the session churns.
+                var offerHandled = false
                 for (index in 0 until signals.length()) {
                     val row = signals.getJSONObject(index)
                     if (!seenRowIds.add(row.optString("id"))) continue
+                    // Rows live 30 s server-side and are delete-on-read — ids
+                    // older than the bound can never replay, so cap the set.
+                    if (seenRowIds.size > 500) seenRowIds.clear()
                     when (row.optString("kind")) {
-                        "offer" -> openSession(row)
+                        "offer" -> {
+                            if (offerHandled) {
+                                Log.i(TAG, "extra offer ${row.optString("id")} in same batch — ignored (retry)")
+                            } else {
+                                offerHandled = true
+                                openSession(row)
+                            }
+                        }
                         "ice" -> onRemoteIce(row.optJSONObject("payload"))
                         "ping" -> postSignal("pong", row.optJSONObject("payload") ?: JSONObject())
                         "hangup" -> {
@@ -355,14 +376,26 @@ class WebRtcClient(
                 override fun onConnectionChange(newState: PeerConnection.PeerConnectionState) {
                     Log.i(TAG, "peer: $newState")
                     when (newState) {
-                        PeerConnection.PeerConnectionState.CONNECTED -> { connected = true; onState("live") }
+                        PeerConnection.PeerConnectionState.CONNECTED -> { connected = true; disconnectGen++; onState("live") }
                         PeerConnection.PeerConnectionState.FAILED -> {
                             Log.w(TAG, "ICE failed — hotspot host-pair missed and no TURN relay (see HOTSPOT-WEBRTC.md Mode C)")
                             endSession()
                         }
-                        PeerConnection.PeerConnectionState.DISCONNECTED,
-                        PeerConnection.PeerConnectionState.CLOSED,
-                        -> endSession()
+                        PeerConnection.PeerConnectionState.DISCONNECTED -> {
+                            // Brief radio/hotspot blips recover via ICE on their
+                            // own — only end the session if still down after the
+                            // grace. The capture pipeline stays warm regardless.
+                            Log.i(TAG, "peer disconnected — 8 s grace for ICE recovery")
+                            val gen = ++disconnectGen
+                            netExecutor.execute {
+                                try { Thread.sleep(8_000) } catch (_: Exception) {}
+                                if (gen == disconnectGen && !connected && inSession()) {
+                                    Log.w(TAG, "still disconnected after grace — ending session (pipeline stays warm)")
+                                    endSession()
+                                }
+                            }
+                        }
+                        PeerConnection.PeerConnectionState.CLOSED -> endSession()
                         else -> Unit
                     }
                 }
@@ -392,7 +425,13 @@ class WebRtcClient(
         pc = peer
 
         val track: VideoTrack = factory.createVideoTrack("screen", videoSource!!)
+        track.setEnabled(true)
+        screenTrack = track
+        // Single stream id for A+V: some browsers group ontrack events by stream
+        // id — two ids ("screen"+"audio") made the viewer replace the video
+        // stream with the audio-only one (black screen, working input).
         peer.addTrack(track, listOf("screen"))
+        Log.i(TAG, "screen track live: id=${track.id()} enabled=${track.enabled()} state=${track.state()}")
 
         // Add audio track (best-effort): the PeerConnectionFactory's default
         // AudioDeviceModule captures mic audio automatically. Audio must never
@@ -401,7 +440,8 @@ class WebRtcClient(
             val audioSrc = audioSource
             if (audioSrc != null) {
                 val aTrack = factory.createAudioTrack("audio", audioSrc)
-                peer.addTrack(aTrack, listOf("audio"))
+                aTrack.setEnabled(true)
+                peer.addTrack(aTrack, listOf("screen"))
                 audioTrack = aTrack
                 Log.i(TAG, "audio track added (mic + system playback)")
             } else {
@@ -502,6 +542,8 @@ class WebRtcClient(
         dataChannel = null
         try { pc?.close() } catch (_: Exception) {}
         pc = null
+        try { screenTrack?.dispose() } catch (_: Exception) {}
+        screenTrack = null
         pendingIce.clear()
         if (running) onState("ready")
     }
@@ -567,6 +609,7 @@ class WebRtcClient(
     fun stopAll() {
         val wasRunning = running
         running = false
+        disconnectGen++ // cancel any pending DISCONNECTED-grace runnable
         if (inSession()) {
             // Best-effort hangup — never block the calling thread (often Main / FGS).
             val hangupBody = JSONObject().put("token", rawToken).put("kind", "hangup").put("payload", JSONObject().put("by", "device")).toString()
@@ -575,6 +618,13 @@ class WebRtcClient(
                 try { http.postJson(hangupUrl, hangupBody) } catch (_: Exception) {}
             }
         }
+        // Native teardown (capturer/EGL/factory dispose) blocks — keep it off
+        // the calling thread. pollExecutor is single-threaded so this runs
+        // after any in-flight onCaptureGranted, never concurrently with start.
+        pollExecutor.execute { teardownCapture(wasRunning) }
+    }
+
+    private fun teardownCapture(wasRunning: Boolean) {
         endSessionQuietly()
         try { capturer?.stopCapture() } catch (_: Exception) {}
         try { surfaceHelper?.dispose() } catch (_: Exception) {}
@@ -584,6 +634,8 @@ class WebRtcClient(
         // Stop audio capture (system playback) and dispose audio source
         audioCapture?.stop()
         audioCapture = null
+        try { audioProjection?.stop() } catch (_: Exception) {}
+        audioProjection = null
         try { audioSource?.dispose() } catch (_: Exception) {}
         audioSource = null
         capturer = null
@@ -605,6 +657,8 @@ class WebRtcClient(
         dataChannel = null
         try { pc?.close() } catch (_: Exception) {}
         pc = null
+        try { screenTrack?.dispose() } catch (_: Exception) {}
+        screenTrack = null
         pendingIce.clear()
     }
 

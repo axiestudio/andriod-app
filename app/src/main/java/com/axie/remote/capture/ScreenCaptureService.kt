@@ -1,6 +1,5 @@
 package com.axie.remote.capture
 
-import android.app.Activity
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -174,7 +173,7 @@ class ScreenCaptureService : Service() {
             // P2P transport (SPEC.md §5.4): the FGS is now up, which is the
             // Android 14 prerequisite for getMediaProjection — ScreenCapturerAndroid
             // creates the projection internally from the consent intent.
-            startWebRtcSession(resultData, serverUrl, token)
+            startWebRtcSession(resultCode, resultData, serverUrl, token)
             return
         }
 
@@ -323,7 +322,7 @@ class ScreenCaptureService : Service() {
      * prerequisite before getMediaProjection — so the capturer can create the
      * projection from the consent intent.
      */
-    private fun startWebRtcSession(resultData: Intent, serverUrl: String, token: String) {
+    private fun startWebRtcSession(resultCode: Int, resultData: Intent, serverUrl: String, token: String) {
         isRunning = true
         relayState = "connecting"
         viewerCount = null
@@ -396,7 +395,7 @@ class ScreenCaptureService : Service() {
             30_000L,
             30_000L,
         )
-        webRtc?.onCaptureGranted(Activity.RESULT_OK, resultData)
+        webRtc?.onCaptureGranted(resultCode, resultData)
         updateNotification("Sharing ON — auto-accepting viewer connections")
         Log.i(TAG, "capture pipeline up, auto-accept loop running signalBase=$httpsBase")
     }

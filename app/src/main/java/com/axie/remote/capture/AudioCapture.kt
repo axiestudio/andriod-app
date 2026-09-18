@@ -146,6 +146,10 @@ class AudioCapture(
         try { audioRecord?.stop() } catch (_: Exception) {}
         try { audioRecord?.release() } catch (_: Exception) {}
         audioRecord = null
+        // The executor thread blocks in AudioRecord.read until stop() above
+        // unblocks it — shut it down so every Sharing ON→OFF cycle doesn't
+        // leak one thread for the life of the process.
+        try { executor.shutdown() } catch (_: Exception) {}
         Log.i(TAG, "AudioPlaybackCapture stopped")
     }
 }
